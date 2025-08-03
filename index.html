@@ -125,25 +125,7 @@
         let currentStore = null; // 當前選擇的店家
         let liffInitialized = false; // LIFF 初始化狀態
 
-        // --- 模擬資料 ---
-        const MOCK_STORES = [
-            { store_id: 1, store_name: "王阿嬤臭豆腐", partner_level: "A", address: "台北市信義區信義路五段7號" },
-            { store_id: 2, store_name: "小李牛肉麵", partner_level: "B", address: "台北市大安區忠孝東路四段1號" },
-            { store_id: 3, store_name: "阿婆滷肉飯", partner_level: "C", address: "台北市中山區中山北路一段1號" }
-        ];
 
-        const MOCK_API_RESPONSE = {
-            "zh-TW": { "store_name": "王阿嬤臭豆腐", "items": [ { "menu_item_id": 101, "item_name": "招牌臭豆腐", "description": "外酥內嫩的發酵豆腐，搭配特製泡菜。", "price_small": 60 }, { "menu_item_id": 102, "item_name": "珍珠奶茶", "description": "經典台灣手搖飲，Q彈珍珠搭配香濃奶茶。", "price_small": 50 } ] },
-            "en-US": { "store_name": "Grandma Wang's Stinky Tofu", "items": [ { "menu_item_id": 101, "item_name": "Crispy Stinky Tofu", "description": "Fermented tofu deep-fried to golden perfection.", "price_small": 60 }, { "menu_item_id": 102, "item_name": "Bubble Milk Tea", "description": "Classic Taiwanese milk tea with tapioca pearls.", "price_small": 50 } ] },
-            "ja-JP": { "store_name": "王おばあちゃんの臭豆腐", "items": [ { "menu_item_id": 101, "item_name": "看板臭豆腐", "description": "外はカリカリ、中はふわふわの発酵豆腐。", "price_small": 60 }, { "menu_item_id": 102, "item_name": "タピオカミルクティー", "description": "もちもちのタピオカと濃厚なミルクティー。", "price_small": 50 } ] },
-            "ko-KR": { "store_name": "왕 할머니의 냄새나는 두부", "items": [ { "menu_item_id": 101, "item_name": "시그니처 냄새나는 두부", "description": "바삭하고 부드러운 발효 두부, 특제 김치와 함께.", "price_small": 60 }, { "menu_item_id": 102, "item_name": "버블 밀크티", "description": "클래식 대만 밀크티, 쫄깃한 타피오카 펄과 함께.", "price_small": 50 } ] }
-        };
-
-        const MOCK_GEMINI_RESPONSE = [
-            { "item_name": "牛肉麵", "price_small": 150 },
-            { "item_name": "排骨飯", "price_small": 120 },
-            { "item_name": "燙青菜", "price_small": 40 }
-        ];
 
         // --- 主要執行函數 ---
         document.addEventListener('DOMContentLoaded', async () => {
@@ -287,9 +269,15 @@
                 }
             } catch (error) {
                 console.error('載入合作店家菜單失敗:', error);
-                // 使用模擬資料
-                const mockData = MOCK_API_RESPONSE[language] || MOCK_API_RESPONSE['zh-TW'];
-                renderMenu(mockData.items);
+                // 顯示錯誤訊息
+                menuList.innerHTML = `
+                    <div class="text-center py-8">
+                        <p class="text-red-600 mb-4">無法載入菜單資料</p>
+                        <button onclick="location.reload()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">
+                            重新載入
+                        </button>
+                    </div>
+                `;
             }
         }
 
@@ -370,12 +358,13 @@
                 if (data.menu_data && data.menu_data.items) {
                     renderMenu(data.menu_data.items);
                 } else {
-                    // 使用模擬資料
-                    const mockItems = MOCK_GEMINI_RESPONSE.map((item, index) => ({
-                        ...item,
-                        menu_item_id: `ocr-${index}`
-                    }));
-                    renderMenu(mockItems);
+                    // 顯示錯誤訊息
+                    ocrStatus.innerHTML = `
+                        <div class="flex items-center justify-center space-x-2 text-red-600">
+                            <span class="text-xl">❌</span>
+                            <span>辨識結果為空，請換張照片或稍後再試。</span>
+                        </div>
+                    `;
                 }
 
             } catch (error) {

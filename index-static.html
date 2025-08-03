@@ -34,16 +34,15 @@
         <main id="main-content" class="hidden">
             <!-- 店家資訊 -->
             <header class="mb-6">
-                <p id="liff-status" class="text-xs text-center text-green-600 mb-2 p-2 bg-green-50 rounded-md"></p>
                 <h1 id="store-name" class="text-3xl font-bold text-gray-800 text-center">點餐傳聲筒</h1>
                 <p id="lang-info" class="text-sm text-gray-500 text-center mt-1"></p>
             </header>
 
-            <!-- 語言顯示 (從 LINE Bot 傳入) -->
+            <!-- 語言顯示 -->
             <section class="bg-white p-4 rounded-lg shadow-md mb-6">
                 <div class="text-center">
                     <p id="current-language-display" class="text-sm text-gray-600 mb-2">顯示語言：<span id="language-name">中文</span></p>
-                    <p class="text-xs text-gray-400">語言已在 LINE Bot 中設定</p>
+                    <p class="text-xs text-gray-400">語言設定</p>
                 </div>
             </section>
 
@@ -107,22 +106,16 @@
         </div>
     </footer>
 
-    <!-- 引入 LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-
     <script>
         // --- 環境變數設定 ---
         // 正式環境後端網址
         const API_BASE_URL = 'https://ordering-helper-backend-1095766716155.asia-east1.run.app'; // Cloud Run 後端網址
-        const LIFF_ID = 'your-liff-id'; // 請替換為您的 LIFF ID (例如: 1234567890-abcdefgh)
-        // 取得 LIFF ID 後，請將上面的 'your-liff-id' 替換為您的實際 LIFF ID
 
         // --- 全局變數 ---
         let cart = {}; // 購物車物件
         let currentMenuItems = []; // 當前頁面顯示的菜單項目
         let currentLanguage = 'zh-TW'; // 當前語言
         let currentStore = null; // 當前選擇的店家
-        let liffInitialized = false; // LIFF 初始化狀態
 
         // --- 模擬資料 ---
         const MOCK_STORES = [
@@ -146,7 +139,6 @@
 
         // --- 主要執行函數 ---
         document.addEventListener('DOMContentLoaded', async () => {
-            await initializeLiff();
             await initializeParameters();
             
             // 隱藏讀取畫面，顯示主內容
@@ -155,30 +147,6 @@
         });
 
         // --- 功能函數 ---
-
-        async function initializeLiff() {
-            if (LIFF_ID === 'your-liff-id') {
-                const statusElement = document.getElementById('liff-status');
-                statusElement.innerHTML = `<span class="text-red-600 font-bold">設定錯誤：</span><span class="text-gray-700">請在程式碼中填入你的 LIFF ID。</span>`;
-                statusElement.classList.add('bg-red-50', 'text-red-600');
-                return;
-            }
-            try {
-                await liff.init({ liffId: LIFF_ID });
-                if (liff.isLoggedIn()) {
-                    const profile = await liff.getProfile();
-                    document.getElementById('liff-status').textContent = `你好 ${profile.displayName}！`;
-                } else {
-                    document.getElementById('liff-status').textContent = 'LIFF 初始化成功 (未登入)';
-                }
-                liffInitialized = true;
-            } catch (error) {
-                console.error("LIFF Initialization failed", error);
-                document.getElementById('liff-status').textContent = 'LIFF 初始化失敗。';
-            }
-        }
-
-
 
         async function initializeParameters() {
             // 從 URL 參數取得所有必要資訊
@@ -238,8 +206,6 @@
             document.getElementById('lang-info').textContent = 
                 `店家ID: ${currentStore || '未選擇'} / 語言: ${languageName}`;
         }
-
-
 
         async function loadPartnerStoreMenu(storeId, language) {
             try {
@@ -462,20 +428,11 @@
                         </div>
                         <p class="text-gray-600">感謝您的訂購，我們會盡快為您準備餐點！</p>
                     </div>
-                    <button onclick="closeLiffWindow()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                    <button onclick="window.close()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
                         關閉視窗
                     </button>
                 </div>
             `;
-        }
-
-        function closeLiffWindow() {
-            if (liffInitialized && liff.isLoggedIn()) {
-                liff.closeWindow();
-            } else {
-                // 如果不在 LIFF 環境中，顯示一般訊息
-                alert('訂單已成功送出！');
-            }
         }
 
         document.getElementById('submit-order').addEventListener('click', async () => {

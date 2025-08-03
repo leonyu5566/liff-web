@@ -178,7 +178,12 @@
                 liffInitialized = true;
             } catch (error) {
                 console.error("LIFF Initialization failed", error);
-                document.getElementById('liff-status').textContent = 'LIFF 初始化失敗。';
+                // 開發環境：顯示模擬訊息
+                if (window.location.hostname === 'localhost' || window.location.hostname.includes('azurewebsites.net')) {
+                    document.getElementById('liff-status').textContent = '開發模式：LIFF 模擬環境';
+                } else {
+                    document.getElementById('liff-status').textContent = 'LIFF 初始化失敗。';
+                }
             }
         }
 

@@ -108,7 +108,7 @@
     </footer>
 
     <!-- 引入 LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/sdk/v2/sdk.js"></script>
 
     <script>
         // --- 環境變數設定 ---
@@ -165,9 +165,12 @@
             }
             try {
                 await liff.init({ liffId: LIFF_ID });
+                console.log('LIFF init success');
+                
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
                     document.getElementById('liff-status').textContent = `你好 ${profile.displayName}！`;
+                    console.log('用戶資料:', profile);
                 } else {
                     document.getElementById('liff-status').textContent = 'LIFF 初始化成功 (未登入)';
                 }

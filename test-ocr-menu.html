@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR 菜單辨識測試 - 義大利麵菜單</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        .upload-area { transition: all 0.3s ease; }
+        .upload-area.dragover { background-color: #f0f9ff; border-color: #3b82f6; }
+        .menu-item { transition: all 0.2s ease; }
+        .menu-item:hover { transform: translateY(-2px); }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <div class="container mx-auto max-w-4xl p-4">
+        <h1 class="text-3xl font-bold text-gray-800 mb-6 text-center">OCR 菜單辨識測試</h1>
+        <p class="text-center text-gray-600 mb-8">測試拍攝的義大利麵菜單照片，透過 AI 辨識生成點餐系統</p>
+        
+        <!-- 測試設定 -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">測試設定</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 後端設定 -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">後端 API 設定</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">API 基礎 URL</label>
+                            <input type="text" id="api-base-url" value="http://localhost:3001" class="w-full p-2 border border-gray-300 rounded-md">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">語言設定</label>
+                            <select id="language" class="w-full p-2 border border-gray-300 rounded-md">
+                                <option value="zh-TW">中文</option>
+                                <option value="en-US">English</option>
+                                <option value="ja-JP">日本語</option>
+                                <option value="ko-KR">한국어</option>
+                            </select>
+                        </div>
+                        
+                        <button id="test-backend" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                            測試後端連線
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 測試說明 -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">測試說明</h3>
+                    <div class="text-sm text-gray-600 space-y-2">
+                        <p>📸 上傳您拍攝的義大利麵菜單照片</p>
+                        <p>🤖 AI 將自動辨識菜單內容</p>
+                        <p>📋 生成結構化的點餐介面</p>
+                        <p>🛒 測試完整的點餐流程</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 圖片上傳區域 -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">上傳菜單照片</h2>
+            
+            <div id="upload-area" class="upload-area border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors">
+                <div class="space-y-4">
+                    <div class="text-6xl">📸</div>
+                    <div>
+                        <p class="text-lg font-semibold text-gray-700 mb-2">拖拽或點擊上傳菜單照片</p>
+                        <p class="text-sm text-gray-500">支援 JPG, PNG, GIF 格式</p>
+                    </div>
+                    <input type="file" id="menu-upload" accept="image/*" class="hidden">
+                    <button id="upload-btn" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        選擇照片
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 圖片預覽 -->
+            <div id="image-preview-container" class="mt-4 hidden">
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">圖片預覽</h3>
+                <div class="relative">
+                    <img id="image-preview" src="#" alt="菜單預覽" class="max-w-full h-auto rounded-lg shadow-md"/>
+                    <div class="absolute top-2 right-2">
+                        <button id="remove-image" class="bg-red-500 text-white w-8 h-8 rounded-full hover:bg-red-600 transition-colors">×</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 處理狀態 -->
+        <div id="processing-status" class="bg-white p-6 rounded-lg shadow-md mb-6 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">處理狀態</h2>
+            <div id="status-content" class="space-y-4">
+                <!-- 狀態內容將在這裡顯示 -->
+            </div>
+        </div>
+
+        <!-- 辨識結果 -->
+        <div id="ocr-results" class="bg-white p-6 rounded-lg shadow-md mb-6 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">AI 辨識結果</h2>
+            <div id="results-content" class="space-y-4">
+                <!-- 辨識結果將在這裡顯示 -->
+            </div>
+        </div>
+
+        <!-- 生成的點餐介面 -->
+        <div id="ordering-interface" class="bg-white p-6 rounded-lg shadow-md mb-6 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">生成的點餐介面</h2>
+            <div id="menu-list" class="space-y-4">
+                <!-- 菜單項目將在這裡顯示 -->
+            </div>
+        </div>
+
+        <!-- 購物車 -->
+        <div id="cart-section" class="bg-white p-6 rounded-lg shadow-md mb-6 hidden">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">購物車</h2>
+            <div id="cart-items" class="space-y-2 mb-4">
+                <!-- 購物車項目將在這裡顯示 -->
+            </div>
+            <div class="flex justify-between items-center">
+                <span class="text-lg font-semibold">總計: NT$ <span id="total-price">0</span></span>
+                <button id="submit-order" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400" disabled>
+                    送出訂單
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 模擬 OCR 辨識結果 - 基於您提供的義大利麵菜單
+        const MOCK_OCR_RESULTS = {
+            "zh-TW": {
+                "store_name": "義大利麵專賣店",
+                "items": [
+                    { "menu_item_id": "pasta-1", "item_name": "經典夏威夷", "description": "奶油白醬系列", "price_small": 115 },
+                    { "menu_item_id": "pasta-2", "item_name": "鮮蝦鳳梨", "description": "奶油白醬系列", "price_small": 125 },
+                    { "menu_item_id": "pasta-3", "item_name": "培根玉米", "description": "奶油白醬系列", "price_small": 125 },
+                    { "menu_item_id": "pasta-4", "item_name": "燻雞蘑菇", "description": "奶油白醬系列", "price_small": 135 },
+                    { "menu_item_id": "pasta-5", "item_name": "黑椒牛肉", "description": "奶油白醬系列", "price_small": 145 },
+                    { "menu_item_id": "pasta-6", "item_name": "鮭魚", "description": "奶油白醬系列", "price_small": 155 },
+                    { "menu_item_id": "pasta-7", "item_name": "蛤蜊", "description": "奶油白醬系列", "price_small": 155 },
+                    { "menu_item_id": "pasta-8", "item_name": "厚切豬排", "description": "奶油白醬系列", "price_small": 165 },
+                    { "menu_item_id": "pasta-9", "item_name": "野菇(素)", "description": "奶油白醬系列", "price_small": 125 },
+                    { "menu_item_id": "pasta-10", "item_name": "鮪魚焗烤飯", "description": "奶油白醬系列", "price_small": 135 },
+                    { "menu_item_id": "pasta-11", "item_name": "咔滋香腸", "description": "茄汁紅醬系列", "price_small": 135 },
+                    { "menu_item_id": "pasta-12", "item_name": "美式辣雞", "description": "茄汁紅醬系列", "price_small": 145 },
+                    { "menu_item_id": "pasta-13", "item_name": "泡菜牛肉", "description": "茄汁紅醬系列", "price_small": 155 },
+                    { "menu_item_id": "pasta-14", "item_name": "英吉利雞排", "description": "茄汁紅醬系列", "price_small": 155 },
+                    { "menu_item_id": "pasta-15", "item_name": "匈牙利雞腿排", "description": "茄汁紅醬系列", "price_small": 165 },
+                    { "menu_item_id": "pasta-16", "item_name": "義式海鮮", "description": "茄汁紅醬系列", "price_small": 170 },
+                    { "menu_item_id": "pizza-1", "item_name": "橙汁鳳梨比薩", "description": "來點比薩系列", "price_small": 80 },
+                    { "menu_item_id": "pizza-2", "item_name": "夏威夷比薩", "description": "來點比薩系列", "price_small": 95 },
+                    { "menu_item_id": "pizza-3", "item_name": "培根玉米比薩", "description": "來點比薩系列", "price_small": 95 },
+                    { "menu_item_id": "pizza-4", "item_name": "燻雞蘑菇比薩", "description": "來點比薩系列", "price_small": 95 },
+                    { "menu_item_id": "pizza-5", "item_name": "照燒章魚比薩", "description": "來點比薩系列", "price_small": 95 },
+                    { "menu_item_id": "pizza-6", "item_name": "德國香腸比薩", "description": "來點比薩系列", "price_small": 95 },
+                    { "menu_item_id": "pizza-7", "item_name": "黑椒牛肉比薩", "description": "來點比薩系列", "price_small": 105 },
+                    { "menu_item_id": "pizza-8", "item_name": "鮮蝦鳳梨比薩", "description": "來點比薩系列", "price_small": 115 },
+                    { "menu_item_id": "pizza-9", "item_name": "夏威夷鮮蝦比薩", "description": "來點比薩系列", "price_small": 125 },
+                    { "menu_item_id": "pizza-10", "item_name": "義式海鮮比薩", "description": "來點比薩系列", "price_small": 135 },
+                    { "menu_item_id": "snack-1", "item_name": "美國脆薯", "description": "點心系列", "price_small": 55 },
+                    { "menu_item_id": "snack-2", "item_name": "香檸雞柳條", "description": "點心系列", "price_small": 50 },
+                    { "menu_item_id": "snack-3", "item_name": "洋蔥條", "description": "點心系列", "price_small": 50 },
+                    { "menu_item_id": "snack-4", "item_name": "咔拉雞米花", "description": "點心系列", "price_small": 50 },
+                    { "menu_item_id": "snack-5", "item_name": "拉絲起司棒", "description": "點心系列", "price_small": 55 },
+                    { "menu_item_id": "snack-6", "item_name": "酥炸雞塊", "description": "點心系列", "price_small": 60 },
+                    { "menu_item_id": "snack-7", "item_name": "焗烤薯泥花椰菜", "description": "點心系列", "price_small": 60 },
+                    { "menu_item_id": "snack-8", "item_name": "香茅雞翅", "description": "點心系列", "price_small": 70 },
+                    { "menu_item_id": "drink-1", "item_name": "紅茶", "description": "飲品系列 (冷/熱)", "price_small": 30 },
+                    { "menu_item_id": "drink-2", "item_name": "綠茶", "description": "飲品系列 (冷/熱)", "price_small": 30 },
+                    { "menu_item_id": "drink-3", "item_name": "青茶", "description": "飲品系列 (冷/熱)", "price_small": 30 },
+                    { "menu_item_id": "soup-1", "item_name": "玉米濃湯", "description": "濃湯系列", "price_small": 50 },
+                    { "menu_item_id": "soup-2", "item_name": "番茄蔬菜湯", "description": "濃湯系列", "price_small": 50 }
+                ]
+            }
+        };
+
+        let cart = {};
+        let currentMenuItems = [];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            setupUploadArea();
+            setupEventListeners();
+        });
+
+        function setupUploadArea() {
+            const uploadArea = document.getElementById('upload-area');
+            const fileInput = document.getElementById('menu-upload');
+            const uploadBtn = document.getElementById('upload-btn');
+
+            // 點擊上傳
+            uploadBtn.addEventListener('click', () => fileInput.click());
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            // 拖拽上傳
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileSelect(files[0]);
+                }
+            });
+
+            // 檔案選擇
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+        }
+
+        function setupEventListeners() {
+            // 測試後端連線
+            document.getElementById('test-backend').addEventListener('click', testBackendConnection);
+            
+            // 移除圖片
+            document.getElementById('remove-image').addEventListener('click', removeImage);
+        }
+
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('請選擇圖片檔案！');
+                return;
+            }
+
+            // 顯示圖片預覽
+            const preview = document.getElementById('image-preview');
+            preview.src = URL.createObjectURL(file);
+            document.getElementById('image-preview-container').classList.remove('hidden');
+
+            // 開始 OCR 處理
+            processOCR(file);
+        }
+
+        function removeImage() {
+            document.getElementById('image-preview-container').classList.add('hidden');
+            document.getElementById('menu-upload').value = '';
+            document.getElementById('ocr-results').classList.add('hidden');
+            document.getElementById('ordering-interface').classList.add('hidden');
+            document.getElementById('cart-section').classList.add('hidden');
+        }
+
+        async function testBackendConnection() {
+            const apiBaseUrl = document.getElementById('api-base-url').value;
+            
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/health`);
+                if (response.ok) {
+                    alert(`✅ 後端連線成功！\nAPI: ${apiBaseUrl}`);
+                } else {
+                    alert(`❌ 後端連線失敗！\n狀態: ${response.status}`);
+                }
+            } catch (error) {
+                alert(`❌ 後端連線失敗！\n錯誤: ${error.message}`);
+            }
+        }
+
+        async function processOCR(file) {
+            const language = document.getElementById('language').value;
+            const apiBaseUrl = document.getElementById('api-base-url').value;
+            
+            // 顯示處理狀態
+            showProcessingStatus('正在上傳圖片...');
+            
+            try {
+                // 模擬上傳延遲
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                showProcessingStatus('AI 正在辨識菜單內容...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                showProcessingStatus('正在分析菜單結構...');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                showProcessingStatus('生成點餐介面...');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // 模擬 OCR 結果
+                const ocrData = MOCK_OCR_RESULTS[language] || MOCK_OCR_RESULTS['zh-TW'];
+                
+                // 顯示辨識結果
+                showOCRResults(ocrData);
+                
+                // 生成點餐介面
+                generateOrderingInterface(ocrData.items);
+                
+                showProcessingStatus('✅ 處理完成！', 'success');
+                
+            } catch (error) {
+                console.error('OCR 處理失敗:', error);
+                showProcessingStatus('❌ 處理失敗，請重試', 'error');
+            }
+        }
+
+        function showProcessingStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('processing-status');
+            const content = document.getElementById('status-content');
+            
+            let icon = '🔄';
+            let colorClass = 'text-blue-600';
+            
+            if (type === 'success') {
+                icon = '✅';
+                colorClass = 'text-green-600';
+            } else if (type === 'error') {
+                icon = '❌';
+                colorClass = 'text-red-600';
+            }
+            
+            content.innerHTML = `
+                <div class="flex items-center space-x-3 ${colorClass}">
+                    <span class="text-xl">${icon}</span>
+                    <span class="font-semibold">${message}</span>
+                </div>
+            `;
+            
+            statusDiv.classList.remove('hidden');
+        }
+
+        function showOCRResults(data) {
+            const resultsDiv = document.getElementById('ocr-results');
+            const content = document.getElementById('results-content');
+            
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-green-800 mb-2">辨識成功</h3>
+                        <p class="text-green-700">店家名稱: ${data.store_name}</p>
+                        <p class="text-green-700">辨識項目: ${data.items.length} 項</p>
+                    </div>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h4 class="font-semibold text-gray-700 mb-2">菜單分類</h4>
+                            <div class="space-y-1 text-sm">
+                                <div class="flex justify-between">
+                                    <span>奶油白醬系列:</span>
+                                    <span class="text-blue-600">10 項</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>茄汁紅醬系列:</span>
+                                    <span class="text-blue-600">6 項</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>比薩系列:</span>
+                                    <span class="text-blue-600">10 項</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>點心系列:</span>
+                                    <span class="text-blue-600">8 項</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>飲品系列:</span>
+                                    <span class="text-blue-600">3 項</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>濃湯系列:</span>
+                                    <span class="text-blue-600">2 項</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h4 class="font-semibold text-gray-700 mb-2">價格範圍</h4>
+                            <div class="space-y-1 text-sm">
+                                <div class="flex justify-between">
+                                    <span>最低價格:</span>
+                                    <span class="text-green-600">NT$ 30</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>最高價格:</span>
+                                    <span class="text-green-600">NT$ 170</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>平均價格:</span>
+                                    <span class="text-green-600">NT$ 95</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            resultsDiv.classList.remove('hidden');
+        }
+
+        function generateOrderingInterface(items) {
+            currentMenuItems = items;
+            const menuList = document.getElementById('menu-list');
+            
+            // 按分類組織菜單
+            const categories = {
+                '奶油白醬系列': items.filter(item => item.description === '奶油白醬系列'),
+                '茄汁紅醬系列': items.filter(item => item.description === '茄汁紅醬系列'),
+                '來點比薩系列': items.filter(item => item.description === '來點比薩系列'),
+                '點心系列': items.filter(item => item.description === '點心系列'),
+                '飲品系列': items.filter(item => item.description === '飲品系列 (冷/熱)'),
+                '濃湯系列': items.filter(item => item.description === '濃湯系列')
+            };
+            
+            menuList.innerHTML = '';
+            
+            Object.entries(categories).forEach(([category, categoryItems]) => {
+                if (categoryItems.length > 0) {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.className = 'mb-6';
+                    categoryDiv.innerHTML = `
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-2">${category}</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            ${categoryItems.map(item => createMenuItemHTML(item)).join('')}
+                        </div>
+                    `;
+                    menuList.appendChild(categoryDiv);
+                }
+            });
+            
+            document.getElementById('ordering-interface').classList.remove('hidden');
+            document.getElementById('cart-section').classList.remove('hidden');
+        }
+
+        function createMenuItemHTML(item) {
+            return `
+                <div class="menu-item bg-white p-4 rounded-lg shadow-md border border-gray-200">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex-grow">
+                            <h4 class="font-semibold text-gray-800">${item.item_name}</h4>
+                            <p class="text-sm text-gray-500">${item.description}</p>
+                        </div>
+                        <span class="text-lg font-bold text-blue-600">NT$ ${item.price_small}</span>
+                    </div>
+                    <div class="flex items-center justify-end space-x-2">
+                        <button onclick="updateCart('${item.menu_item_id}', -1)" class="decrease-btn bg-gray-200 text-gray-700 w-8 h-8 rounded-full font-bold text-lg hover:bg-gray-300 transition">-</button>
+                        <span id="quantity-${item.menu_item_id}" class="font-bold text-lg w-6 text-center">0</span>
+                        <button onclick="updateCart('${item.menu_item_id}', 1)" class="increase-btn bg-blue-500 text-white w-8 h-8 rounded-full font-bold text-lg hover:bg-blue-600 transition">+</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateCart(itemId, change) {
+            const currentQuantity = cart[itemId] || 0;
+            const newQuantity = Math.max(0, currentQuantity + change);
+            cart[itemId] = newQuantity;
+            
+            document.getElementById(`quantity-${itemId}`).textContent = newQuantity;
+            updateCartDisplay();
+            updateTotalPrice();
+        }
+
+        function updateCartDisplay() {
+            const cartItems = document.getElementById('cart-items');
+            const itemsWithQuantity = Object.entries(cart).filter(([_, quantity]) => quantity > 0);
+            
+            if (itemsWithQuantity.length === 0) {
+                cartItems.innerHTML = '<p class="text-gray-500 text-center py-4">購物車是空的</p>';
+                return;
+            }
+            
+            cartItems.innerHTML = itemsWithQuantity.map(([itemId, quantity]) => {
+                const item = currentMenuItems.find(i => i.menu_item_id === itemId);
+                if (!item) return '';
+                
+                return `
+                    <div class="flex justify-between items-center py-2 border-b border-gray-100">
+                        <div>
+                            <span class="font-medium">${item.item_name}</span>
+                            <span class="text-sm text-gray-500 ml-2">x${quantity}</span>
+                        </div>
+                        <span class="font-semibold">NT$ ${item.price_small * quantity}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateTotalPrice() {
+            let total = 0;
+            for (const itemId in cart) {
+                const quantity = cart[itemId];
+                if (quantity > 0) {
+                    const item = currentMenuItems.find(i => i.menu_item_id === itemId);
+                    if (item) {
+                        total += item.price_small * quantity;
+                    }
+                }
+            }
+            document.getElementById('total-price').textContent = total;
+            document.getElementById('submit-order').disabled = total === 0;
+        }
+
+        // 送出訂單
+        document.getElementById('submit-order').addEventListener('click', async () => {
+            const itemsWithQuantity = Object.entries(cart).filter(([_, quantity]) => quantity > 0);
+            
+            if (itemsWithQuantity.length === 0) {
+                alert('購物車是空的！');
+                return;
+            }
+            
+            const orderItems = itemsWithQuantity.map(([itemId, quantity]) => {
+                const item = currentMenuItems.find(i => i.menu_item_id === itemId);
+                return {
+                    menu_item_id: itemId,
+                    quantity: quantity,
+                    price: item.price_small
+                };
+            });
+            
+            const orderDetails = orderItems.map(item => {
+                const menuItem = currentMenuItems.find(i => i.menu_item_id === item.menu_item_id);
+                return `${menuItem.item_name} x ${item.quantity}`;
+            }).join('\n');
+            
+            const total = orderItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            
+            alert(`✅ 訂單已送出！\n\n📋 訂單編號: ORDER-${Date.now()}\n💰 總金額: NT$ ${total}\n\n📝 訂單內容:\n${orderDetails}\n\n🎉 感謝您的訂購！`);
+            
+            // 清空購物車
+            cart = {};
+            updateCartDisplay();
+            updateTotalPrice();
+        });
+    </script>
+
+</body>
+</html> 

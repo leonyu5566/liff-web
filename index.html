@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>點餐傳聲筒 - 點餐介面</title>
+    
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 引入 Google Fonts (Inter) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', 'Noto Sans TC', sans-serif; }
+        button:focus { outline: none; }
+        .cart-item-enter { opacity: 0; transform: translateY(-10px); transition: all 0.3s ease; }
+        /* 隱藏預設的檔案上傳按鈕 */
+        input[type="file"] { display: none; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+    <div id="app" class="container mx-auto max-w-lg p-4 pb-48">
+
+        <!-- 讀取中畫面 -->
+        <div id="loading" class="text-center py-20">
+            <p class="text-gray-500">正在準備點餐環境...</p>
+        </div>
+
+        <!-- 主內容 (預設隱藏) -->
+        <main id="main-content" class="hidden">
+            <!-- 店家資訊 -->
+            <header class="mb-6">
+                <p id="liff-status" class="text-xs text-center text-green-600 mb-2 p-2 bg-green-50 rounded-md"></p>
+                <h1 id="store-name" class="text-3xl font-bold text-gray-800 text-center">點餐傳聲筒</h1>
+                <p id="lang-info" class="text-sm text-gray-500 text-center mt-1"></p>
+            </header>
+
+            <!-- 語言顯示 (從 LINE Bot 傳入) -->
+            <section class="bg-white p-4 rounded-lg shadow-md mb-6">
+                <div class="text-center">
+                    <p id="current-language-display" class="text-sm text-gray-600 mb-2">顯示語言：<span id="language-name">中文</span></p>
+                    <p class="text-xs text-gray-400">語言已在 LINE Bot 中設定</p>
+                </div>
+            </section>
+
+            <!-- 店家資訊顯示 -->
+            <section id="store-info" class="bg-white p-4 rounded-lg shadow-md mb-6">
+                <div class="text-center">
+                    <h2 id="current-store-name" class="text-lg font-bold text-gray-700 mb-2">載入中...</h2>
+                    <p id="store-type-badge" class="text-sm text-gray-500">正在準備點餐環境</p>
+                </div>
+            </section>
+
+            <!-- 非合作店家上傳區塊 -->
+            <section id="ocr-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-6">
+                <div class="text-center mb-4">
+                    <div class="inline-flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full mb-3">
+                        <span class="text-2xl">📸</span>
+                    </div>
+                    <h2 id="ocr-title" class="text-lg font-bold text-gray-700 mb-2">非合作店家</h2>
+                    <p id="ocr-description" class="text-sm text-gray-500">請拍攝或上傳清楚的菜單照片，我們將為您即時翻譯並建立點餐單。</p>
+                </div>
+                
+                <!-- 圖片預覽 -->
+                <div id="image-preview-container" class="mb-4 hidden">
+                    <img id="image-preview" src="#" alt="菜單預覽" class="max-h-60 w-auto mx-auto rounded-md shadow-sm"/>
+                </div>
+
+                <!-- 狀態訊息 -->
+                <p id="ocr-status" class="text-center text-blue-600 font-semibold my-4 hidden"></p>
+
+                <!-- 檔案上傳按鈕 -->
+                <label for="menu-upload" class="w-full text-center cursor-pointer bg-indigo-600 text-white font-bold py-3 px-6 rounded-full hover:bg-indigo-700 transition-colors block">
+                    選擇菜單照片
+                </label>
+                <input type="file" id="menu-upload" accept="image/*">
+
+                <!-- 上傳按鈕 (選擇照片後顯示) -->
+                <button id="upload-btn" class="w-full mt-3 bg-green-600 text-white font-bold py-3 px-6 rounded-full hover:bg-green-700 transition-colors hidden disabled:bg-gray-400">
+                    開始辨識菜單
+                </button>
+            </section>
+
+            <!-- 菜單列表 -->
+            <section id="menu-list" class="space-y-4">
+                <!-- 菜單項目將由 JavaScript 動態生成於此 -->
+            </section>
+        </main>
+    </div>
+
+    <!-- 底部購物車 / 下單欄 -->
+    <footer id="cart-footer" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg hidden">
+        <div class="container mx-auto max-w-lg p-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span id="total-label" class="text-sm text-gray-600">總計</span>
+                    <p class="text-2xl font-bold text-gray-900">NT$ <span id="total-price">0</span></p>
+                </div>
+                <button id="submit-order" class="bg-blue-600 text-white font-bold py-3 px-8 rounded-full hover:bg-blue-700 transition-colors disabled:bg-gray-300">
+                    送出訂單
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- 引入 LIFF SDK -->
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+    <script>
+        // --- 環境變數設定 ---
+        // 正式環境後端網址
+        const API_BASE_URL = 'https://ordering-helper-backend-1095766716155.asia-east1.run.app'; // Cloud Run 後端網址
+        const LIFF_ID = 'your-liff-id'; // 請替換為您的 LIFF ID (例如: 1234567890-abcdefgh)
+
+        // --- 全局變數 ---
+        let cart = {}; // 購物車物件
+        let currentMenuItems = []; // 當前頁面顯示的菜單項目
+        let currentLanguage = 'zh-TW'; // 當前語言
+        let currentStore = null; // 當前選擇的店家
+        let liffInitialized = false; // LIFF 初始化狀態
+
+        // --- 模擬資料 ---
+        const MOCK_STORES = [
+            { store_id: 1, store_name: "王阿嬤臭豆腐", partner_level: "A", address: "台北市信義區信義路五段7號" },
+            { store_id: 2, store_name: "小李牛肉麵", partner_level: "B", address: "台北市大安區忠孝東路四段1號" },
+            { store_id: 3, store_name: "阿婆滷肉飯", partner_level: "C", address: "台北市中山區中山北路一段1號" }
+        ];
+
+        const MOCK_API_RESPONSE = {
+            "zh-TW": { "store_name": "王阿嬤臭豆腐", "items": [ { "menu_item_id": 101, "item_name": "招牌臭豆腐", "description": "外酥內嫩的發酵豆腐，搭配特製泡菜。", "price_small": 60 }, { "menu_item_id": 102, "item_name": "珍珠奶茶", "description": "經典台灣手搖飲，Q彈珍珠搭配香濃奶茶。", "price_small": 50 } ] },
+            "en-US": { "store_name": "Grandma Wang's Stinky Tofu", "items": [ { "menu_item_id": 101, "item_name": "Crispy Stinky Tofu", "description": "Fermented tofu deep-fried to golden perfection.", "price_small": 60 }, { "menu_item_id": 102, "item_name": "Bubble Milk Tea", "description": "Classic Taiwanese milk tea with tapioca pearls.", "price_small": 50 } ] },
+            "ja-JP": { "store_name": "王おばあちゃんの臭豆腐", "items": [ { "menu_item_id": 101, "item_name": "看板臭豆腐", "description": "外はカリカリ、中はふわふわの発酵豆腐。", "price_small": 60 }, { "menu_item_id": 102, "item_name": "タピオカミルクティー", "description": "もちもちのタピオカと濃厚なミルクティー。", "price_small": 50 } ] },
+            "ko-KR": { "store_name": "왕 할머니의 냄새나는 두부", "items": [ { "menu_item_id": 101, "item_name": "시그니처 냄새나는 두부", "description": "바삭하고 부드러운 발효 두부, 특제 김치와 함께.", "price_small": 60 }, { "menu_item_id": 102, "item_name": "버블 밀크티", "description": "클래식 대만 밀크티, 쫄깃한 타피오카 펄과 함께.", "price_small": 50 } ] }
+        };
+
+        const MOCK_GEMINI_RESPONSE = [
+            { "item_name": "牛肉麵", "price_small": 150 },
+            { "item_name": "排骨飯", "price_small": 120 },
+            { "item_name": "燙青菜", "price_small": 40 }
+        ];
+
+        // --- 主要執行函數 ---
+        document.addEventListener('DOMContentLoaded', async () => {
+            await initializeLiff();
+            await initializeParameters();
+            
+            // 隱藏讀取畫面，顯示主內容
+            document.getElementById('loading').classList.add('hidden');
+            document.getElementById('main-content').classList.remove('hidden');
+        });
+
+        // --- 功能函數 ---
+
+        async function initializeLiff() {
+            if (LIFF_ID === 'your-liff-id') {
+                const statusElement = document.getElementById('liff-status');
+                statusElement.innerHTML = `<span class="text-red-600 font-bold">設定錯誤：</span><span class="text-gray-700">請在程式碼中填入你的 LIFF ID。</span>`;
+                statusElement.classList.add('bg-red-50', 'text-red-600');
+                return;
+            }
+            try {
+                await liff.init({ liffId: LIFF_ID });
+                document.getElementById('liff-status').textContent = liff.isLoggedIn() ? `你好 ${ (await liff.getProfile()).displayName }！` : 'LIFF 初始化成功 (未登入)';
+                liffInitialized = true;
+            } catch (error) {
+                console.error("LIFF Initialization failed", error);
+                document.getElementById('liff-status').textContent = 'LIFF 初始化失敗。';
+            }
+        }
+
+
+
+        async function initializeParameters() {
+            // 從 URL 參數取得所有必要資訊
+            const urlParams = new URLSearchParams(window.location.search);
+            const storeId = urlParams.get('store_id');
+            const language = urlParams.get('lang') || 'zh-TW';
+            const isPartner = urlParams.get('partner') === 'true';
+            const storeName = urlParams.get('store_name') || '未知店家';
+            
+            // 設定全局變數
+            currentStore = storeId;
+            currentLanguage = language;
+            
+            // 直接顯示店家資訊（後端會處理翻譯）
+            document.getElementById('current-store-name').textContent = storeName;
+            document.getElementById('store-type-badge').innerHTML = isPartner 
+                ? '<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">合作店家</span>'
+                : '<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">非合作店家</span>';
+            
+            // 更新語言顯示
+            updateLanguageDisplay();
+            updateLanguageInfo();
+            
+            // 根據合作狀態決定顯示介面
+            if (isPartner) {
+                // 合作店家模式 - 直接載入菜單
+                await loadPartnerStoreMenu(storeId, language);
+            } else {
+                // 非合作店家模式 - 顯示 OCR 上傳介面
+                showNonPartnerInterface();
+            }
+        }
+
+        function updateLanguageDisplay() {
+            const langNames = {
+                'zh-TW': '中文',
+                'en-US': 'English',
+                'ja-JP': '日本語',
+                'ko-KR': '한국어'
+            };
+            
+            const languageName = langNames[currentLanguage] || '中文';
+            document.getElementById('language-name').textContent = languageName;
+            
+            // 更新語言資訊
+            updateLanguageInfo();
+        }
+
+        function updateLanguageInfo() {
+            const langNames = {
+                'zh-TW': '中文',
+                'en-US': 'English',
+                'ja-JP': '日本語',
+                'ko-KR': '한국어'
+            };
+            const languageName = langNames[currentLanguage] || '中文';
+            document.getElementById('lang-info').textContent = 
+                `店家ID: ${currentStore || '未選擇'} / 語言: ${languageName}`;
+        }
+
+
+
+        async function loadPartnerStoreMenu(storeId, language) {
+            try {
+                // 隱藏 OCR 介面
+                document.getElementById('ocr-section').classList.add('hidden');
+                
+                // 顯示載入狀態
+                const menuList = document.getElementById('menu-list');
+                menuList.innerHTML = `
+                    <div class="text-center py-8">
+                        <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                        <p class="text-gray-600">正在載入菜單...</p>
+                    </div>
+                `;
+                
+                // 向後端請求菜單資料
+                const response = await fetch(`${API_BASE_URL}/api/menus/${storeId}?lang=${language}`);
+                if (!response.ok) {
+                    throw new Error('無法載入菜單');
+                }
+                const data = await response.json();
+                
+                // 渲染菜單
+                if (data && data.items && data.items.length > 0) {
+                    renderMenu(data.items);
+                } else {
+                    // 如果沒有菜單資料，顯示錯誤訊息
+                    menuList.innerHTML = `
+                        <div class="text-center py-8">
+                            <p class="text-red-600 mb-4">無法載入菜單資料</p>
+                            <button onclick="location.reload()" class="bg-blue-600 text-white px-4 py-2 rounded-lg">
+                                重新載入
+                            </button>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('載入合作店家菜單失敗:', error);
+                // 使用模擬資料
+                const mockData = MOCK_API_RESPONSE[language] || MOCK_API_RESPONSE['zh-TW'];
+                renderMenu(mockData.items);
+            }
+        }
+
+        function showNonPartnerInterface() {
+            // 顯示非合作店家介面
+            document.getElementById('ocr-section').classList.remove('hidden');
+            
+            // 初始化非合作店家模式
+            setupNonPartnerMode();
+        }
+
+        function setupNonPartnerMode() {
+            const fileInput = document.getElementById('menu-upload');
+            const uploadBtn = document.getElementById('upload-btn');
+            const previewContainer = document.getElementById('image-preview-container');
+            const previewImage = document.getElementById('image-preview');
+
+            fileInput.addEventListener('change', () => {
+                const file = fileInput.files[0];
+                if (file) {
+                    previewImage.src = URL.createObjectURL(file);
+                    previewContainer.classList.remove('hidden');
+                    uploadBtn.classList.remove('hidden');
+                }
+            });
+
+            uploadBtn.addEventListener('click', async () => {
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert('請先選擇一張照片！');
+                    return;
+                }
+                await handleOcrUpload(file, currentLanguage);
+            });
+        }
+
+        async function handleOcrUpload(file, language) {
+            const ocrStatus = document.getElementById('ocr-status');
+            const uploadBtn = document.getElementById('upload-btn');
+            
+            // 顯示處理狀態
+            ocrStatus.innerHTML = `
+                <div class="flex items-center justify-center space-x-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span>正在上傳並請 AI 辨識菜單...</span>
+                </div>
+            `;
+            ocrStatus.classList.remove('hidden');
+            uploadBtn.disabled = true;
+
+            try {
+                const formData = new FormData();
+                formData.append('image', file);
+                formData.append('lang', language);
+                formData.append('store_id', currentStore || 1);
+                
+                const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('AI 辨識失敗');
+                }
+                
+                const data = await response.json();
+                
+                // 顯示成功狀態
+                ocrStatus.innerHTML = `
+                    <div class="flex items-center justify-center space-x-2 text-green-600">
+                        <span class="text-xl">✅</span>
+                        <span>辨識完成！正在生成點餐介面...</span>
+                    </div>
+                `;
+                setTimeout(() => ocrStatus.classList.add('hidden'), 2000);
+                
+                // 渲染辨識結果
+                if (data.menu_data && data.menu_data.items) {
+                    renderMenu(data.menu_data.items);
+                } else {
+                    // 使用模擬資料
+                    const mockItems = MOCK_GEMINI_RESPONSE.map((item, index) => ({
+                        ...item,
+                        menu_item_id: `ocr-${index}`
+                    }));
+                    renderMenu(mockItems);
+                }
+
+            } catch (error) {
+                console.error("OCR 處理失敗:", error);
+                ocrStatus.innerHTML = `
+                    <div class="flex items-center justify-center space-x-2 text-red-600">
+                        <span class="text-xl">❌</span>
+                        <span>辨識失敗，請換張照片或稍後再試。</span>
+                    </div>
+                `;
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        }
+
+        function renderMenu(items) {
+            currentMenuItems = items;
+            const menuList = document.getElementById('menu-list');
+            menuList.innerHTML = '';
+            
+            items.forEach(item => {
+                menuList.appendChild(createMenuItemElement(item));
+            });
+            
+            document.getElementById('cart-footer').classList.remove('hidden');
+        }
+
+        function createMenuItemElement(item) {
+            const div = document.createElement('div');
+            div.className = 'bg-white p-4 rounded-lg shadow-md flex items-center space-x-4';
+            div.innerHTML = `
+                <div class="w-16 h-16 bg-gray-200 rounded-md flex-shrink-0">
+                    <img src="https://placehold.co/64x64/e2e8f0/334155?text=${item.item_name.charAt(0)}" class="w-full h-full object-cover rounded-md" alt="${item.item_name}">
+                </div>
+                <div class="flex-grow">
+                    <h3 class="font-bold text-lg text-gray-800">${item.item_name}</h3>
+                    <p class="text-sm text-gray-500">${item.description || ''}</p>
+                    <p class="text-md font-semibold text-blue-600 mt-1">NT$ ${item.price_small}</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button data-item-id="${item.menu_item_id}" class="decrease-btn bg-gray-200 text-gray-700 w-8 h-8 rounded-full font-bold text-lg hover:bg-gray-300 transition">-</button>
+                    <span id="quantity-${item.menu_item_id}" class="font-bold text-lg w-6 text-center">0</span>
+                    <button data-item-id="${item.menu_item_id}" class="increase-btn bg-blue-500 text-white w-8 h-8 rounded-full font-bold text-lg hover:bg-blue-600 transition">+</button>
+                </div>
+            `;
+            div.querySelector('.increase-btn').addEventListener('click', () => updateCart(item, 1));
+            div.querySelector('.decrease-btn').addEventListener('click', () => updateCart(item, -1));
+            return div;
+        }
+
+        function updateCart(item, change) {
+            const itemId = item.menu_item_id;
+            const currentQuantity = cart[itemId] || 0;
+            const newQuantity = Math.max(0, currentQuantity + change);
+            cart[itemId] = newQuantity;
+            document.getElementById(`quantity-${itemId}`).textContent = newQuantity;
+            updateTotalPrice();
+        }
+
+        function updateTotalPrice() {
+            let total = 0;
+            for (const itemId in cart) {
+                const quantity = cart[itemId];
+                if (quantity > 0) {
+                    const item = currentMenuItems.find(i => i.menu_item_id == itemId);
+                    if (item) {
+                        total += item.price_small * quantity;
+                    }
+                }
+            }
+            document.getElementById('total-price').textContent = total;
+            document.getElementById('submit-order').disabled = total === 0;
+        }
+
+        document.getElementById('submit-order').addEventListener('click', async () => {
+            if (Object.keys(cart).length === 0 || Object.values(cart).every(q => q === 0)) {
+                alert('購物車是空的！');
+                return;
+            }
+            
+            try {
+                const orderItems = Object.entries(cart)
+                    .filter(([_, quantity]) => quantity > 0)
+                    .map(([itemId, quantity]) => {
+                        const item = currentMenuItems.find(i => i.menu_item_id == itemId);
+                        return {
+                            menu_item_id: itemId,
+                            quantity: quantity,
+                            price: item.price_small
+                        };
+                    });
+
+                const response = await fetch(`${API_BASE_URL}/api/orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        store_id: currentStore,
+                        items: orderItems,
+                        language: currentLanguage
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('訂單建立失敗');
+                }
+
+                const result = await response.json();
+                
+                const orderDetails = orderItems
+                    .map(item => {
+                        const menuItem = currentMenuItems.find(i => i.menu_item_id == item.menu_item_id);
+                        return `${menuItem.item_name} x ${item.quantity}`;
+                    }).join('\n');
+
+                // 如果 LIFF 已初始化，發送訊息給 Bot
+                if (liffInitialized && liff.isLoggedIn()) {
+                    try {
+                        const successMessage = `✅ 訂單已確認！\n\n📋 訂單編號: ${result.order_id}\n💰 總金額: NT$ ${document.getElementById('total-price').textContent}\n\n📝 訂單內容:\n${orderDetails}\n\n🎉 感謝您的訂購！`;
+                        
+                        await liff.sendMessages([
+                            {
+                                type: 'text',
+                                text: successMessage
+                            }
+                        ]);
+                        
+                        // 延遲一下再關閉視窗，讓用戶看到訊息
+                        setTimeout(() => {
+                            liff.closeWindow();
+                        }, 2000);
+                        
+                    } catch (liffError) {
+                        console.error('發送 LIFF 訊息失敗:', liffError);
+                        // 如果 LIFF 發送失敗，顯示一般 alert
+                        alert(`訂單已送出！\n訂單編號: ${result.order_id}\n總金額: NT$ ${document.getElementById('total-price').textContent}\n\n訂單內容:\n${orderDetails}`);
+                    }
+                } else {
+                    // 如果不在 LIFF 環境中，顯示一般 alert
+                    alert(`訂單已送出！\n訂單編號: ${result.order_id}\n總金額: NT$ ${document.getElementById('total-price').textContent}\n\n訂單內容:\n${orderDetails}`);
+                }
+                
+                // 清空購物車
+                cart = {};
+                currentMenuItems.forEach(item => {
+                    document.getElementById(`quantity-${item.menu_item_id}`).textContent = '0';
+                });
+                updateTotalPrice();
+                
+            } catch (error) {
+                console.error('送出訂單失敗:', error);
+                alert('訂單送出失敗，請稍後再試。');
+            }
+        });
+    </script>
+
+</body>
+</html> 

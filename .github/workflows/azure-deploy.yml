@@ -1,0 +1,29 @@
+name: Deploy to Azure Static Web Apps
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    name: Build and Deploy
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Build And Deploy
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: "upload"
+          app_location: "/" # 應用程式根目錄
+          api_location: "" # API 目錄 (如果有的話)
+          output_location: "" # 建置輸出目錄 (如果有的話)
+          skip_app_build: true # 跳過建置，直接部署靜態檔案 

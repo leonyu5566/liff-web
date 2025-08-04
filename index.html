@@ -163,7 +163,10 @@
                 return;
             }
             try {
-                await liff.init({ liffId: LIFF_ID });
+                await liff.init({ 
+                    liffId: LIFF_ID,
+                    withLoginOnExternalBrowser: true // 支援外部瀏覽器
+                });
                 console.log('LIFF init success');
                 
                 if (liff.isLoggedIn()) {
@@ -328,61 +331,33 @@
                 }
                 
                 // 壓縮圖片
-                const compressedFile = await compressImage(file);
+                const compressedFile = await compress(file);
                 await handleOcrUpload(compressedFile, currentLanguage);
             });
         }
 
-        // 圖片壓縮函數
-        async function compressImage(file) {
-            return new Promise((resolve) => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
+        // 圖片壓縮函數 (優化版)
+        function compress(imgFile) {
+            return new Promise(resolve => {
                 const img = new Image();
-                
                 img.onload = () => {
-                    // 計算壓縮後的尺寸，最大 1024px
-                    const maxSize = 1024;
-                    let { width, height } = img;
-                    
-                    if (width > height) {
-                        if (width > maxSize) {
-                            height = (height * maxSize) / width;
-                            width = maxSize;
-                        }
-                    } else {
-                        if (height > maxSize) {
-                            width = (width * maxSize) / height;
-                            height = maxSize;
-                        }
-                    }
-                    
-                    // 設定 canvas 尺寸
-                    canvas.width = width;
-                    canvas.height = height;
-                    
-                    // 繪製壓縮後的圖片
-                    ctx.drawImage(img, 0, 0, width, height);
-                    
-                    // 轉換為 Blob
-                    canvas.toBlob((blob) => {
-                        const compressedFile = new File([blob], file.name, {
-                            type: 'image/jpeg',
-                            lastModified: Date.now()
-                        });
-                        
+                    const canvas = document.createElement('canvas');
+                    const scale = 1024 / Math.max(img.width, img.height);
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
+                    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                    canvas.toBlob(b => {
+                        const compressedFile = new File([b], imgFile.name, {type:'image/jpeg'});
                         console.log('圖片壓縮完成:', {
-                            原始大小: file.size,
+                            原始大小: imgFile.size,
                             壓縮後大小: compressedFile.size,
-                            壓縮比例: Math.round((1 - compressedFile.size / file.size) * 100) + '%',
-                            新尺寸: `${width}×${height}`
+                            壓縮比例: Math.round((1 - compressedFile.size / imgFile.size) * 100) + '%',
+                            新尺寸: `${canvas.width}×${canvas.height}`
                         });
-                        
                         resolve(compressedFile);
-                    }, 'image/jpeg', 0.8); // 80% 品質
+                    }, 'image/jpeg', 0.85);
                 };
-                
-                img.src = URL.createObjectURL(file);
+                img.src = URL.createObjectURL(imgFile);
             });
         }
 
@@ -402,7 +377,7 @@
 
             try {
                 const formData = new FormData();
-                formData.append('file', file); // 改為 'file' 而不是 'image'
+                formData.append('file', file);
                 formData.append('lang', language);
                 formData.append('store_id', currentStore || 1);
                 
@@ -414,25 +389,17 @@
                     storeId: currentStore || 1
                 });
                 
-                // 檢查 FormData 內容
-                for (let [key, value] of formData.entries()) {
-                    console.log('FormData 內容:', key, value);
-                }
-                
                 const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
                     method: 'POST',
-                    body: formData,
-                    headers: {
-                        // 不要設定 Content-Type，讓瀏覽器自動設定 multipart/form-data
-                    }
+                    body: formData
                 });
                 
                 console.log('API 回應狀態:', response.status, response.statusText);
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('API 錯誤回應:', errorText);
-                    throw new Error(`AI 辨識失敗: ${response.status} ${response.statusText}`);
+                    const errorData = await response.json();
+                    console.error('API 錯誤回應:', errorData);
+                    throw new Error(errorData.error || `系統忙碌，稍後重試 (${response.status})`);
                 }
                 
                 const data = await response.json();

@@ -350,13 +350,28 @@
                 formData.append('lang', language);
                 formData.append('store_id', currentStore || 1);
                 
-                const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
-                    method: 'POST',
-                    body: formData
+                console.log('準備上傳檔案:', {
+                    fileName: file.name,
+                    fileSize: file.size,
+                    fileType: file.type,
+                    language: language,
+                    storeId: currentStore || 1
                 });
                 
+                const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        // 不要設定 Content-Type，讓瀏覽器自動設定 multipart/form-data
+                    }
+                });
+                
+                console.log('API 回應狀態:', response.status, response.statusText);
+                
                 if (!response.ok) {
-                    throw new Error('AI 辨識失敗');
+                    const errorText = await response.text();
+                    console.error('API 錯誤回應:', errorText);
+                    throw new Error(`AI 辨識失敗: ${response.status} ${response.statusText}`);
                 }
                 
                 const data = await response.json();

@@ -346,7 +346,7 @@
 
             try {
                 const formData = new FormData();
-                formData.append('image', file);
+                formData.append('file', file); // 改為 'file' 而不是 'image'
                 formData.append('lang', language);
                 formData.append('store_id', currentStore || 1);
                 
@@ -357,6 +357,11 @@
                     language: language,
                     storeId: currentStore || 1
                 });
+                
+                // 檢查 FormData 內容
+                for (let [key, value] of formData.entries()) {
+                    console.log('FormData 內容:', key, value);
+                }
                 
                 const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
                     method: 'POST',

@@ -326,7 +326,63 @@
                     alert('請先選擇一張照片！');
                     return;
                 }
-                await handleOcrUpload(file, currentLanguage);
+                
+                // 壓縮圖片
+                const compressedFile = await compressImage(file);
+                await handleOcrUpload(compressedFile, currentLanguage);
+            });
+        }
+
+        // 圖片壓縮函數
+        async function compressImage(file) {
+            return new Promise((resolve) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                
+                img.onload = () => {
+                    // 計算壓縮後的尺寸，最大 1024px
+                    const maxSize = 1024;
+                    let { width, height } = img;
+                    
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height = (height * maxSize) / width;
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width = (width * maxSize) / height;
+                            height = maxSize;
+                        }
+                    }
+                    
+                    // 設定 canvas 尺寸
+                    canvas.width = width;
+                    canvas.height = height;
+                    
+                    // 繪製壓縮後的圖片
+                    ctx.drawImage(img, 0, 0, width, height);
+                    
+                    // 轉換為 Blob
+                    canvas.toBlob((blob) => {
+                        const compressedFile = new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        });
+                        
+                        console.log('圖片壓縮完成:', {
+                            原始大小: file.size,
+                            壓縮後大小: compressedFile.size,
+                            壓縮比例: Math.round((1 - compressedFile.size / file.size) * 100) + '%',
+                            新尺寸: `${width}×${height}`
+                        });
+                        
+                        resolve(compressedFile);
+                    }, 'image/jpeg', 0.8); // 80% 品質
+                };
+                
+                img.src = URL.createObjectURL(file);
             });
         }
 

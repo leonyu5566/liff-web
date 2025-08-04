@@ -108,7 +108,7 @@
     </footer>
 
     <!-- 引入 LIFF SDK -->
-    <script charset="utf-8" src="https://static.line-scdn.net/liff/sdk/v2/sdk.js"></script>
+    <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
     <script>
         // --- 環境變數設定 ---
@@ -129,6 +129,8 @@
 
         // --- 主要執行函數 ---
         document.addEventListener('DOMContentLoaded', async () => {
+            // 等待 LIFF SDK 載入完成
+            await waitForLiff();
             await initializeLiff();
             await initializeParameters();
             
@@ -136,6 +138,20 @@
             document.getElementById('loading').classList.add('hidden');
             document.getElementById('main-content').classList.remove('hidden');
         });
+
+        // 等待 LIFF SDK 載入
+        async function waitForLiff() {
+            return new Promise((resolve) => {
+                const checkLiff = () => {
+                    if (typeof liff !== 'undefined') {
+                        resolve();
+                    } else {
+                        setTimeout(checkLiff, 100);
+                    }
+                };
+                checkLiff();
+            });
+        }
 
         // --- 功能函數 ---
 

@@ -163,9 +163,12 @@
                 return;
             }
             try {
+                // 檢查是否在 LINE 環境中
+                const isInClient = liff.isInClient();
+                
                 await liff.init({ 
                     liffId: LIFF_ID,
-                    withLoginOnExternalBrowser: true // 支援外部瀏覽器
+                    withLoginOnExternalBrowser: isInClient // 只在 LINE 環境中要求登入
                 });
                 console.log('LIFF init success');
                 
@@ -174,7 +177,9 @@
                     document.getElementById('liff-status').textContent = `你好 ${profile.displayName}！`;
                     console.log('用戶資料:', profile);
                 } else {
-                    document.getElementById('liff-status').textContent = 'LIFF 初始化成功 (未登入)';
+                    document.getElementById('liff-status').textContent = isInClient 
+                        ? 'LIFF 初始化成功 (未登入)' 
+                        : '開發模式：LIFF 模擬環境';
                 }
                 liffInitialized = true;
             } catch (error) {

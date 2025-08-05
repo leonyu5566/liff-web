@@ -124,6 +124,7 @@
         let currentLanguage = 'zh-TW'; // 當前語言
         let currentStore = null; // 當前選擇的店家
         let liffInitialized = false; // LIFF 初始化狀態
+        let currentUserId = null; // 當前使用者 ID
 
 
 
@@ -174,9 +175,12 @@
                 
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
+                    currentUserId = profile.userId; // 儲存 LINE 使用者 ID
                     document.getElementById('liff-status').textContent = `你好 ${profile.displayName}！`;
                     console.log('用戶資料:', profile);
                 } else {
+                    // 非 LIFF 環境或未登入時，使用訪客 ID
+                    currentUserId = `guest_${crypto.randomUUID().slice(0, 8)}`;
                     document.getElementById('liff-status').textContent = isInClient 
                         ? 'LIFF 初始化成功 (未登入)' 
                         : '開發模式：LIFF 模擬環境';
@@ -190,6 +194,8 @@
                 } else {
                     document.getElementById('liff-status').textContent = 'LIFF 初始化失敗。';
                 }
+                // 初始化失敗時也設定訪客 ID
+                currentUserId = `guest_${crypto.randomUUID().slice(0, 8)}`;
             }
         }
 
@@ -675,6 +681,7 @@
 
                 // 3. 準備請求資料（與後端完全相容）
                 const payload = {
+                    line_user_id: currentUserId, // 加入使用者 ID
                     store_id: currentStore,
                     items: orderItems,
                     total: totalAmount,  // 可選，後端會重新計算

@@ -407,6 +407,9 @@
                     throw new Error(errorData.error || `系統忙碌，稍後重試 (${response.status})`);
                 }
                 
+                // 201 Created 也是成功狀態
+                console.log('API 呼叫成功:', response.status);
+                
                 const data = await response.json();
                 
                 // 顯示成功狀態

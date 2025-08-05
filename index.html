@@ -411,6 +411,21 @@
                 console.log('API 呼叫成功:', response.status);
                 
                 const data = await response.json();
+                console.log('後端回傳的完整資料:', data);
+                
+                // 檢查資料結構
+                if (data.menu_data) {
+                    console.log('menu_data 存在:', data.menu_data);
+                    if (data.menu_data.items) {
+                        console.log('items 陣列:', data.menu_data.items);
+                        console.log('items 數量:', data.menu_data.items.length);
+                    } else {
+                        console.log('items 不存在或為空');
+                    }
+                } else {
+                    console.log('menu_data 不存在，檢查其他可能的欄位');
+                    console.log('可用的欄位:', Object.keys(data));
+                }
                 
                 // 顯示成功狀態
                 ocrStatus.innerHTML = `
@@ -422,7 +437,7 @@
                 setTimeout(() => ocrStatus.classList.add('hidden'), 2000);
                 
                 // 渲染辨識結果
-                if (data.menu_data && data.menu_data.items) {
+                if (data.menu_data && data.menu_data.items && data.menu_data.items.length > 0) {
                     renderMenu(data.menu_data.items);
                 } else {
                     // 顯示錯誤訊息

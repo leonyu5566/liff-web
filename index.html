@@ -613,11 +613,16 @@
                 const orderItems = Object.entries(cart)
                     .filter(([_, quantity]) => quantity > 0)
                     .map(([itemId, quantity]) => {
-                        const item = currentMenuItems.find(i => i.menu_item_id == itemId);
+                        // 使用多種可能的 ID 欄位來匹配項目
+                        const item = currentMenuItems.find(i => 
+                            (i.id == itemId) || 
+                            (i.menu_item_id == itemId) || 
+                            (i.temp_id == itemId)
+                        );
                         return {
                             menu_item_id: itemId,
                             quantity: quantity,
-                            price: item.price_small
+                            price: item ? (item.price || item.price_small || 0) : 0
                         };
                     });
 
@@ -641,8 +646,17 @@
                 
                 const orderDetails = orderItems
                     .map(item => {
-                        const menuItem = currentMenuItems.find(i => i.menu_item_id == item.menu_item_id);
-                        return `${menuItem.item_name} x ${item.quantity}`;
+                        // 使用多種可能的 ID 欄位來匹配項目
+                        const menuItem = currentMenuItems.find(i => 
+                            (i.id == item.menu_item_id) || 
+                            (i.menu_item_id == item.menu_item_id) || 
+                            (i.temp_id == item.menu_item_id)
+                        );
+                        if (menuItem) {
+                            const itemName = menuItem.translated_name || menuItem.original_name || menuItem.item_name || '未命名';
+                            return `${itemName} x ${item.quantity}`;
+                        }
+                        return `項目 ${item.menu_item_id} x ${item.quantity}`;
                     }).join('\n');
 
                 // 顯示訂單確認頁面
@@ -651,7 +665,11 @@
                 // 清空購物車
                 cart = {};
                 currentMenuItems.forEach(item => {
-                    document.getElementById(`quantity-${item.menu_item_id}`).textContent = '0';
+                    const itemId = item.id || item.menu_item_id || item.temp_id;
+                    const quantityElement = document.getElementById(`quantity-${itemId}`);
+                    if (quantityElement) {
+                        quantityElement.textContent = '0';
+                    }
                 });
                 updateTotalPrice();
                 

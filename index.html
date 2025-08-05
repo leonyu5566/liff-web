@@ -610,36 +610,110 @@
             }
             
             try {
-                const orderItems = Object.entries(cart)
-                    .filter(([_, quantity]) => quantity > 0)
-                    .map(([itemId, quantity]) => {
-                        // 使用多種可能的 ID 欄位來匹配項目
-                        const item = currentMenuItems.find(i => 
-                            (i.id == itemId) || 
-                            (i.menu_item_id == itemId) || 
-                            (i.temp_id == itemId)
-                        );
-                        return {
-                            menu_item_id: itemId,
-                            quantity: quantity,
-                            price: item ? (item.price || item.price_small || 0) : 0
-                        };
-                    });
+                // 1. 驗證購物車資料
+                const cartItems = Object.entries(cart)
+                    .filter(([_, quantity]) => quantity > 0);
+                
+                if (cartItems.length === 0) {
+                    alert('購物車是空的！');
+                    return;
+                }
+                
+                // 2. 建立訂單項目（支援多種格式，與後端相容）
+                let totalAmount = 0;
+                const orderItems = cartItems.map(([itemId, quantity]) => {
+                    // 使用多種可能的 ID 欄位來匹配項目
+                    const item = currentMenuItems.find(i => 
+                        (i.id == itemId) || 
+                        (i.menu_item_id == itemId) || 
+                        (i.temp_id == itemId)
+                    );
+                    
+                    if (!item) {
+                        console.warn('找不到菜單項目:', itemId);
+                        return null;
+                    }
+                    
+                    // 驗證價格（支援多種價格欄位）
+                    const priceUnit = item.price_small || item.price || item.price_unit || 0;
+                    if (!priceUnit || isNaN(priceUnit) || priceUnit <= 0) {
+                        console.error('價格無效:', item);
+                        const itemName = item.translated_name || item.original_name || item.item_name || '項目';
+                        alert(`${itemName} 沒有有效價格，請先編輯`);
+                        throw new Error('價格無效');
+                    }
+                    
+                    // 驗證數量
+                    if (!quantity || quantity <= 0) {
+                        console.warn('數量無效:', quantity);
+                        return null;
+                    }
+                    
+                    const itemTotal = priceUnit * quantity;
+                    totalAmount += itemTotal;
+                    
+                    // 返回訂單項目（支援多種欄位名稱格式）
+                    return {
+                        // 支援多種 ID 格式
+                        menu_item_id: item.menu_item_id || item.id || item.temp_id,
+                        // 支援多種數量欄位名稱
+                        quantity: quantity,  // 後端也支援 qty
+                        qty: quantity,      // 後端也支援 quantity
+                        // 支援多種價格欄位名稱
+                        price_unit: priceUnit,  // 後端也支援 price 或 price_small
+                        price: priceUnit,       // 後端也支援 price_unit
+                        // 額外資訊（可選）
+                        item_name: item.translated_name || item.original_name || item.item_name,
+                        subtotal: itemTotal
+                    };
+                }).filter(Boolean); // 過濾掉無效項目
 
+                if (orderItems.length === 0) {
+                    alert('沒有有效的訂單項目！');
+                    return;
+                }
+
+                // 3. 準備請求資料（與後端完全相容）
+                const payload = {
+                    store_id: currentStore,
+                    items: orderItems,
+                    total: totalAmount,  // 可選，後端會重新計算
+                    language: currentLanguage
+                };
+
+                console.log('發送訂單 payload:', payload);
+
+                // 4. 發送請求
                 const response = await fetch(`${API_BASE_URL}/api/orders`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        store_id: currentStore,
-                        items: orderItems,
-                        language: currentLanguage
-                    })
+                    body: JSON.stringify(payload)
                 });
 
+                // 5. 處理回應（改善錯誤處理）
                 if (!response.ok) {
-                    throw new Error('訂單建立失敗');
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('後端錯誤回應:', errorData);
+                    
+                    // 顯示詳細的錯誤訊息
+                    let errorMessage = '訂單建立失敗';
+                    if (errorData.validation_errors) {
+                        errorMessage = `資料驗證失敗：\n${errorData.validation_errors.join('\n')}`;
+                    } else if (errorData.missing_fields) {
+                        errorMessage = `缺少必要欄位：${errorData.missing_fields.join(', ')}`;
+                    } else if (errorData.detail) {
+                        errorMessage = errorData.detail;
+                    } else if (errorData.message) {
+                        errorMessage = errorData.message;
+                    } else if (errorData.error) {
+                        errorMessage = errorData.error;
+                    } else {
+                        errorMessage = `${response.statusText} (${response.status})`;
+                    }
+                    
+                    throw new Error(errorMessage);
                 }
 
                 const result = await response.json();
@@ -654,9 +728,9 @@
                         );
                         if (menuItem) {
                             const itemName = menuItem.translated_name || menuItem.original_name || menuItem.item_name || '未命名';
-                            return `${itemName} x ${item.quantity}`;
+                            return `${itemName} x ${item.qty}`;
                         }
-                        return `項目 ${item.menu_item_id} x ${item.quantity}`;
+                        return `項目 ${item.menu_item_id} x ${item.qty}`;
                     }).join('\n');
 
                 // 顯示訂單確認頁面
@@ -675,7 +749,7 @@
                 
             } catch (error) {
                 console.error('送出訂單失敗:', error);
-                alert('訂單送出失敗，請稍後再試。');
+                alert(`訂單送出失敗：${error.message}`);
             }
         });
     </script>

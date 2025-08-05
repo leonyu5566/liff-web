@@ -499,13 +499,17 @@
         function createMenuItemElement(item) {
             // 安全處理可能為空的欄位
             const safeStr = (value) => (value ?? '').toString();
-            const itemName = safeStr(item.item_name);
-            const description = safeStr(item.description);
-            const price = item.price_small || 0;
+            const safeNum = (value) => (value ?? 0);
             
-            // 驗證必要欄位
-            if (!itemName || !item.menu_item_id) {
-                console.warn('菜單項目資料不完整，略過此項:', item);
+            // 支援多種可能的欄位名稱
+            const itemName = safeStr(item.translated_name || item.original_name || item.item_name || '未命名');
+            const description = safeStr(item.description || '');
+            const price = safeNum(item.price || item.price_small || 0);
+            const itemId = item.id || item.menu_item_id || item.temp_id || `temp_${Date.now()}_${Math.random()}`;
+            
+            // 驗證必要欄位 - 只要有名稱和價格就顯示
+            if (!itemName || itemName === '未命名') {
+                console.warn('菜單項目缺少名稱，略過此項:', item);
                 return null;
             }
             
@@ -521,9 +525,9 @@
                     <p class="text-md font-semibold text-blue-600 mt-1">NT$ ${price}</p>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <button data-item-id="${item.menu_item_id}" class="decrease-btn bg-gray-200 text-gray-700 w-8 h-8 rounded-full font-bold text-lg hover:bg-gray-300 transition">-</button>
-                    <span id="quantity-${item.menu_item_id}" class="font-bold text-lg w-6 text-center">0</span>
-                    <button data-item-id="${item.menu_item_id}" class="increase-btn bg-blue-500 text-white w-8 h-8 rounded-full font-bold text-lg hover:bg-blue-600 transition">+</button>
+                    <button data-item-id="${itemId}" class="decrease-btn bg-gray-200 text-gray-700 w-8 h-8 rounded-full font-bold text-lg hover:bg-gray-300 transition">-</button>
+                    <span id="quantity-${itemId}" class="font-bold text-lg w-6 text-center">0</span>
+                    <button data-item-id="${itemId}" class="increase-btn bg-blue-500 text-white w-8 h-8 rounded-full font-bold text-lg hover:bg-blue-600 transition">+</button>
                 </div>
             `;
             div.querySelector('.increase-btn').addEventListener('click', () => updateCart(item, 1));
@@ -532,7 +536,8 @@
         }
 
         function updateCart(item, change) {
-            const itemId = item.menu_item_id;
+            // 使用與 createMenuItemElement 相同的邏輯來取得 itemId
+            const itemId = item.id || item.menu_item_id || item.temp_id || `temp_${Date.now()}_${Math.random()}`;
             const currentQuantity = cart[itemId] || 0;
             const newQuantity = Math.max(0, currentQuantity + change);
             cart[itemId] = newQuantity;
@@ -545,9 +550,15 @@
             for (const itemId in cart) {
                 const quantity = cart[itemId];
                 if (quantity > 0) {
-                    const item = currentMenuItems.find(i => i.menu_item_id == itemId);
+                    // 使用多種可能的 ID 欄位來匹配項目
+                    const item = currentMenuItems.find(i => 
+                        (i.id == itemId) || 
+                        (i.menu_item_id == itemId) || 
+                        (i.temp_id == itemId)
+                    );
                     if (item) {
-                        total += item.price_small * quantity;
+                        const price = item.price || item.price_small || 0;
+                        total += price * quantity;
                     }
                 }
             }

@@ -214,9 +214,18 @@
             const isPartner = urlParams.get('partner') === 'true';
             const storeName = urlParams.get('store_name') || '未知店家';
             
-            // 設定全局變數
-            currentStore = storeId;
+            // 設定全局變數 - 確保 currentStore 有有效值
+            currentStore = storeId || 'non-partner';
             currentLanguage = language;
+            
+            // 除錯：顯示實際的URL參數
+            console.log('URL參數:', {
+                store_id: storeId,
+                language: language,
+                isPartner: isPartner,
+                storeName: storeName,
+                currentStore: currentStore
+            });
             
             // 直接顯示店家資訊（後端會處理翻譯）
             document.getElementById('current-store-name').textContent = storeName;
@@ -404,17 +413,21 @@
             uploadBtn.disabled = true;
 
             try {
+                // 檢查並確保 store_id 有有效值
+                const storeId = currentStore || 'non-partner';
+                console.log('即將上傳 store_id:', storeId);
+                
                 const formData = new FormData();
                 formData.append('file', file);
                 formData.append('lang', language);
-                formData.append('store_id', currentStore || 1);
+                formData.append('store_id', storeId);
                 
                 console.log('準備上傳檔案:', {
                     fileName: file.name,
                     fileSize: file.size,
                     fileType: file.type,
                     language: language,
-                    storeId: currentStore || 1
+                    storeId: storeId
                 });
                 
                 const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
@@ -687,7 +700,7 @@
                 // 3. 準備請求資料（與後端完全相容）
                 const payload = {
                     line_user_id: currentUserId, // 加入使用者 ID
-                    store_id: currentStore,
+                    store_id: currentStore || 'non-partner',
                     items: orderItems,
                     total: totalAmount,  // 可選，後端會重新計算
                     language: currentLanguage

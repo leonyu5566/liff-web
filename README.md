@@ -36,4 +36,4 @@ liff-web/
 - CSS3 (Tailwind CSS)
 - JavaScript (Vanilla)
 - LINE LIFF SDK
-- Azure Static Web Apps 
+- Azure Static Web Apps # Updated at 2025年 8月 7日 週四 18時21分03秒 CST

@@ -79,10 +79,19 @@
                 <p id="ocr-status" class="text-center text-blue-600 font-semibold my-4 hidden"></p>
 
                 <!-- 檔案上傳按鈕 -->
-                <label for="menu-upload" class="w-full text-center cursor-pointer bg-indigo-600 text-white font-bold py-3 px-6 rounded-full hover:bg-indigo-700 transition-colors block">
-                    選擇菜單照片
-                </label>
-                <input type="file" id="menu-upload" accept="image/*">
+                <div class="space-y-3">
+                    <!-- 拍照按鈕 -->
+                    <label for="menu-upload-camera" class="w-full text-center cursor-pointer bg-blue-600 text-white font-bold py-3 px-6 rounded-full hover:bg-blue-700 transition-colors block">
+                        📸 拍照
+                    </label>
+                    <input type="file" id="menu-upload-camera" accept="image/*" capture="environment" style="display: none;">
+                    
+                    <!-- 選擇檔案按鈕 -->
+                    <label for="menu-upload-gallery" class="w-full text-center cursor-pointer bg-indigo-600 text-white font-bold py-3 px-6 rounded-full hover:bg-indigo-700 transition-colors block">
+                        📁 從相簿選擇
+                    </label>
+                    <input type="file" id="menu-upload-gallery" accept="image/*" style="display: none;">
+                </div>
 
                 <!-- 上傳按鈕 (選擇照片後顯示) -->
                 <button id="upload-btn" class="w-full mt-3 bg-green-600 text-white font-bold py-3 px-6 rounded-full hover:bg-green-700 transition-colors hidden disabled:bg-gray-400">
@@ -156,6 +165,8 @@
                 ocrTitle: '非合作店家',
                 ocrDescription: '請拍攝或上傳清楚的菜單照片，我們將為您即時翻譯並建立點餐單。',
                 selectPhoto: '選擇菜單照片',
+                takePhoto: '拍照',
+                selectFromGallery: '從相簿選擇',
                 startRecognition: '開始辨識菜單',
                 uploadingStatus: '正在上傳並請 AI 辨識菜單...',
                 recognitionSuccess: '辨識完成！正在生成點餐介面...',
@@ -220,6 +231,8 @@
                 ocrTitle: 'Non-Partner Store',
                 ocrDescription: 'Please take or upload a clear photo of the menu. We will translate it in real-time and create an order form.',
                 selectPhoto: 'Select Menu Photo',
+                takePhoto: 'Take Photo',
+                selectFromGallery: 'Select from Gallery',
                 startRecognition: 'Start Recognition',
                 uploadingStatus: 'Uploading and asking AI to recognize menu...',
                 recognitionSuccess: 'Recognition complete! Generating ordering interface...',
@@ -284,6 +297,8 @@
                 ocrTitle: '非パートナー店舗',
                 ocrDescription: 'メニューの写真を撮影またはアップロードしてください。リアルタイムで翻訳し、注文フォームを作成いたします。',
                 selectPhoto: 'メニュー写真を選択',
+                takePhoto: '写真を撮影',
+                selectFromGallery: 'ギャラリーから選択',
                 startRecognition: '認識開始',
                 uploadingStatus: 'アップロード中、AIにメニュー認識を依頼中...',
                 recognitionSuccess: '認識完了！注文インターフェースを生成中...',
@@ -431,7 +446,9 @@
             // 更新 OCR 介面
             document.getElementById('ocr-title').textContent = texts.ocrTitle;
             document.getElementById('ocr-description').textContent = texts.ocrDescription;
-            document.querySelector('label[for="menu-upload"]').textContent = texts.selectPhoto;
+            // 更新兩個按鈕的文字
+            document.querySelector('label[for="menu-upload-camera"]').textContent = '📸 ' + texts.takePhoto;
+            document.querySelector('label[for="menu-upload-gallery"]').textContent = '📁 ' + texts.selectFromGallery;
             document.getElementById('upload-btn').textContent = texts.startRecognition;
             
             // 更新購物車
@@ -667,22 +684,37 @@
         }
 
         function setupNonPartnerMode() {
-            const fileInput = document.getElementById('menu-upload');
+            const cameraInput = document.getElementById('menu-upload-camera');
+            const galleryInput = document.getElementById('menu-upload-gallery');
             const uploadBtn = document.getElementById('upload-btn');
             const previewContainer = document.getElementById('image-preview-container');
             const previewImage = document.getElementById('image-preview');
 
-            fileInput.addEventListener('change', () => {
-                const file = fileInput.files[0];
+            // 處理檔案選擇的通用函數
+            function handleFileSelect(file) {
                 if (file) {
                     previewImage.src = URL.createObjectURL(file);
                     previewContainer.classList.remove('hidden');
                     uploadBtn.classList.remove('hidden');
+                    
+                    // 儲存選擇的檔案到全域變數
+                    window.selectedFile = file;
                 }
+            }
+
+            // 為兩個 input 元素添加事件監聽器
+            cameraInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                handleFileSelect(file);
+            });
+
+            galleryInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                handleFileSelect(file);
             });
 
             uploadBtn.addEventListener('click', async () => {
-                const file = fileInput.files[0];
+                const file = window.selectedFile;
                 if (!file) {
                     const texts = translations[currentLanguage] || translations['zh-TW'];
                     alert(texts.selectPhotoFirst);

@@ -78,19 +78,13 @@
                 <!-- 狀態訊息 -->
                 <p id="ocr-status" class="text-center text-blue-600 font-semibold my-4 hidden"></p>
 
-                <!-- 檔案上傳按鈕 -->
-                <div class="space-y-3">
-                    <!-- 拍照按鈕 -->
-                    <label for="menu-upload-camera" class="w-full text-center cursor-pointer bg-blue-600 text-white font-bold py-3 px-6 rounded-full hover:bg-blue-700 transition-colors block">
-                        📸 拍照
+                <!-- 統一的檔案上傳按鈕 -->
+                <div class="text-center">
+                    <label for="menu-upload" class="w-full text-center cursor-pointer bg-indigo-600 text-white font-bold py-4 px-8 rounded-full hover:bg-indigo-700 transition-colors block text-lg">
+                        📸 選擇菜單照片
                     </label>
-                    <input type="file" id="menu-upload-camera" accept="image/*" capture="environment" style="display: none;">
-                    
-                    <!-- 選擇檔案按鈕 -->
-                    <label for="menu-upload-gallery" class="w-full text-center cursor-pointer bg-indigo-600 text-white font-bold py-3 px-6 rounded-full hover:bg-indigo-700 transition-colors block">
-                        📁 從相簿選擇
-                    </label>
-                    <input type="file" id="menu-upload-gallery" accept="image/*" style="display: none;">
+                    <input type="file" id="menu-upload" accept="image/*" style="display: none;">
+                    <p class="text-xs text-gray-500 mt-2">支援拍照或從相簿選擇</p>
                 </div>
 
                 <!-- 上傳按鈕 (選擇照片後顯示) -->
@@ -446,9 +440,8 @@
             // 更新 OCR 介面
             document.getElementById('ocr-title').textContent = texts.ocrTitle;
             document.getElementById('ocr-description').textContent = texts.ocrDescription;
-            // 更新兩個按鈕的文字
-            document.querySelector('label[for="menu-upload-camera"]').textContent = '📸 ' + texts.takePhoto;
-            document.querySelector('label[for="menu-upload-gallery"]').textContent = '📁 ' + texts.selectFromGallery;
+            // 更新統一的上傳按鈕文字
+            document.querySelector('label[for="menu-upload"]').textContent = '📸 ' + texts.selectPhoto;
             document.getElementById('upload-btn').textContent = texts.startRecognition;
             
             // 更新購物車
@@ -684,8 +677,7 @@
         }
 
         function setupNonPartnerMode() {
-            const cameraInput = document.getElementById('menu-upload-camera');
-            const galleryInput = document.getElementById('menu-upload-gallery');
+            const fileInput = document.getElementById('menu-upload');
             const uploadBtn = document.getElementById('upload-btn');
             const previewContainer = document.getElementById('image-preview-container');
             const previewImage = document.getElementById('image-preview');
@@ -702,13 +694,8 @@
                 }
             }
 
-            // 為兩個 input 元素添加事件監聽器
-            cameraInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                handleFileSelect(file);
-            });
-
-            galleryInput.addEventListener('change', (e) => {
+            // 為檔案上傳 input 添加事件監聽器
+            fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 handleFileSelect(file);
             });

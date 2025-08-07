@@ -47,8 +47,8 @@
             <!-- 語言顯示 (從 LINE Bot 傳入) -->
             <section class="bg-white p-4 rounded-lg shadow-md mb-6">
                 <div class="text-center">
-                    <p id="current-language-display" class="text-sm text-gray-600 mb-2">Display Language: <span id="language-name">English</span></p>
-                    <p class="text-xs text-gray-400">Language is set in LINE Bot</p>
+                    <p id="current-language-display" class="text-sm text-gray-600 mb-2">顯示語言：<span id="language-name">中文</span></p>
+                    <p class="text-xs text-gray-400">語言已在 LINE Bot 中設定</p>
                 </div>
             </section>
 
@@ -525,24 +525,59 @@
 
 
 
-        async function initializeParameters() {
+                async function initializeParameters() {
             // 從 URL 參數取得所有必要資訊
             const urlParams = new URLSearchParams(window.location.search);
             const storeId = urlParams.get('store_id');
             const preferredLang = urlParams.get('preferred_lang'); // 新增：從 LINE Bot 傳入的使用者偏好語言
-            const language = preferredLang || urlParams.get('lang') || 'zh-TW'; // 優先使用 preferred_lang
             const isPartner = urlParams.get('partner') === 'true';
             const storeName = urlParams.get('store_name') || 'Unknown Store';
             
-            // 設定全局變數 - 確保 currentStore 有有效值
-            currentStore = storeId || 'non-partner';
-            currentLanguage = language;
+            // 語言偵測邏輯：優先使用URL參數，備用自動偵測
+            let detectedLanguage = preferredLang || urlParams.get('lang');
             
-            // 除錯：顯示實際的URL參數
-            console.log('URL參數:', {
+            // 如果沒有URL參數，嘗試自動偵測LINE語言
+            if (!detectedLanguage && liffInitialized) {
+                try {
+                    const liffLanguage = liff.getLanguage();
+                    console.log('LIFF自動偵測語言:', liffLanguage);
+                    detectedLanguage = liffLanguage;
+                } catch (error) {
+                    console.log('LIFF語言偵測失敗，使用瀏覽器語言');
+                    // 備用：使用瀏覽器語言
+                    detectedLanguage = navigator.language || 'zh-TW';
+                }
+            }
+            
+            // 如果還是沒有語言設定，使用預設值
+            const language = detectedLanguage || 'zh-TW';
+            
+            // 語言代碼轉換：將簡短代碼轉換為完整代碼
+            const languageCodeMapping = {
+                'en': 'en-US',
+                'zh-TW': 'zh-TW', 
+                'ja': 'ja-JP',
+                'ko': 'ko-KR',
+                'zh': 'zh-TW',  // 支援簡體中文轉繁體
+                'en-US': 'en-US',
+                'ja-JP': 'ja-JP',
+                'ko-KR': 'ko-KR'
+            };
+            const normalizedLanguage = languageCodeMapping[language] || 'zh-TW';
+            
+            // 設定全局變數
+            currentStore = storeId || 'non-partner';
+            currentLanguage = normalizedLanguage;
+            
+            // 除錯：顯示語言偵測過程
+            console.log('語言偵測過程:', {
                 store_id: storeId,
                 preferred_lang: preferredLang,
-                language: language,
+                detected_language: detectedLanguage,
+                original_language: language,
+                normalized_language: normalizedLanguage,
+                liff_initialized: liffInitialized,
+                browser_language: navigator.language,
                 isPartner: isPartner,
                 storeName: storeName,
                 currentStore: currentStore
@@ -565,7 +600,7 @@
             // 根據合作狀態決定顯示介面
             if (isPartner) {
                 // 合作店家模式 - 直接載入菜單
-                await loadPartnerStoreMenu(storeId, language);
+                await loadPartnerStoreMenu(storeId, normalizedLanguage);
             } else {
                 // 非合作店家模式 - 顯示 OCR 上傳介面
                 showNonPartnerInterface();
@@ -617,8 +652,17 @@
                     </div>
                 `;
                 
+                // 語言代碼轉換：將完整代碼轉換為後端期望的簡短代碼
+                const backendLanguageMapping = {
+                    'en-US': 'en',
+                    'zh-TW': 'zh',
+                    'ja-JP': 'ja',
+                    'ko-KR': 'ko'
+                };
+                const backendLanguage = backendLanguageMapping[language] || language;
+                
                 // 向後端請求菜單資料
-                const response = await fetch(`${API_BASE_URL}/api/menus/${storeId}?lang=${language}`);
+                const response = await fetch(`${API_BASE_URL}/api/menu/${storeId}?lang=${backendLanguage}`);
                 if (!response.ok) {
                     const texts = translations[currentLanguage] || translations['zh-TW'];
                     throw new Error(texts.loadMenuError);
@@ -759,9 +803,18 @@
                 const storeId = currentStore || 'non-partner';
                 console.log('即將上傳 store_id:', storeId);
                 
+                // 語言代碼轉換：將完整代碼轉換為後端期望的簡短代碼
+                const backendLanguageMapping = {
+                    'en-US': 'en',
+                    'zh-TW': 'zh',
+                    'ja-JP': 'ja',
+                    'ko-KR': 'ko'
+                };
+                const backendLanguage = backendLanguageMapping[language] || language;
+                
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('lang', language);
+                formData.append('lang', backendLanguage);
                 formData.append('store_id', storeId);
                 
                 // debug: dump every key/val

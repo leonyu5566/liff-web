@@ -1078,9 +1078,22 @@
                 return isNaN(num) ? 0 : num;
             };
             
-            // 支援多種可能的欄位名稱
+            // 支援多種可能的欄位名稱（包括新的雙語格式）
             const texts = translations[currentLanguage] || translations['zh-TW'];
-            const itemName = safeStr(item.translated_name || item.original_name || item.item_name || 'Untitled');
+            
+            // 支援新的雙語格式 {name: {original: "中文", translated: "English"}}
+            let itemName;
+            if (item.name && typeof item.name === 'object' && item.name.original && item.name.translated) {
+                // 新格式：根據使用者語言選擇菜名
+                if (currentLanguage.startsWith('zh')) {
+                    itemName = item.name.original; // 中文使用者使用中文菜名
+                } else {
+                    itemName = item.name.translated; // 其他語言使用者使用翻譯菜名
+                }
+            } else {
+                // 舊格式：優先使用 translated_name，然後是 original_name
+                itemName = safeStr(item.translated_name || item.original_name || item.item_name || 'Untitled');
+            }
             const description = safeStr(item.description || '');
             const price = safeNum(item.price || item.price_small || 0);
             const itemId = item.id || item.menu_item_id || item.temp_id || `temp_${Date.now()}_${Math.random()}`;
@@ -1256,6 +1269,11 @@
                         // 支援多種價格欄位名稱
                         price_unit: priceUnit,  // 後端也支援 price 或 price_small
                         price: priceUnit,       // 後端也支援 price_unit
+                        // 支援新的雙語格式
+                        name: item.name && typeof item.name === 'object' ? item.name : {
+                            original: item.original_name || item.item_name || 'Untitled',
+                            translated: item.translated_name || item.item_name || 'Untitled'
+                        },
                         // 額外資訊（可選）
                         item_name: item.translated_name || item.original_name || item.item_name,
                         subtotal: itemTotal
@@ -1324,7 +1342,19 @@
                             (i.temp_id == item.menu_item_id)
                         );
                         if (menuItem) {
-                            const itemName = menuItem.translated_name || menuItem.original_name || menuItem.item_name || 'Untitled';
+                            // 支援新的雙語格式
+                            let itemName;
+                            if (menuItem.name && typeof menuItem.name === 'object' && menuItem.name.original && menuItem.name.translated) {
+                                // 新格式：根據使用者語言選擇菜名
+                                if (currentLanguage.startsWith('zh')) {
+                                    itemName = menuItem.name.original; // 中文使用者使用中文菜名
+                                } else {
+                                    itemName = menuItem.name.translated; // 其他語言使用者使用翻譯菜名
+                                }
+                            } else {
+                                // 舊格式：優先使用 translated_name，然後是 original_name
+                                itemName = menuItem.translated_name || menuItem.original_name || menuItem.item_name || 'Untitled';
+                            }
                             return `${itemName} x ${item.qty}`;
                         }
                         const texts = translations[currentLanguage] || translations['zh-TW'];

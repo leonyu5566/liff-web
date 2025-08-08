@@ -1355,10 +1355,10 @@
                                 // 舊格式：優先使用 translated_name，然後是 original_name
                                 itemName = menuItem.translated_name || menuItem.original_name || menuItem.item_name || 'Untitled';
                             }
-                            return `${itemName} x ${item.qty}`;
+                            return `${itemName} x ${item.quantity || item.qty}`;
                         }
                         const texts = translations[currentLanguage] || translations['zh-TW'];
-                        return `Item ${item.menu_item_id} x ${item.qty}`;
+                        return `Item ${item.menu_item_id} x ${item.quantity || item.qty}`;
                     }).join('\n');
 
                 // 顯示訂單確認頁面

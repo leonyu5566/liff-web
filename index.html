@@ -1261,8 +1261,8 @@
                     
                     // 返回訂單項目（支援多種欄位名稱格式）
                     return {
-                        // 支援多種 ID 格式
-                        menu_item_id: item.menu_item_id || item.id || item.temp_id,
+                        // 支援多種 ID 格式，但對於 OCR 菜單可能為 null
+                        menu_item_id: item.menu_item_id || item.id || item.temp_id || null,
                         // 支援多種數量欄位名稱
                         quantity: quantity,  // 後端也支援 qty
                         qty: quantity,      // 後端也支援 quantity

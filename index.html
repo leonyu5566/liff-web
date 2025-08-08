@@ -80,11 +80,11 @@
 
                 <!-- 統一的檔案上傳按鈕 -->
                 <div class="text-center">
-                    <label for="menu-upload" class="w-full text-center cursor-pointer bg-indigo-600 text-white font-bold py-4 px-8 rounded-full hover:bg-indigo-700 transition-colors block text-lg">
+                    <button id="custom-upload-btn" class="w-full text-center cursor-pointer bg-indigo-600 text-white font-bold py-4 px-8 rounded-full hover:bg-indigo-700 transition-colors block text-lg">
                         📸 選擇菜單照片
-                    </label>
+                    </button>
                     <input type="file" id="menu-upload" accept="image/*" style="display: none;">
-                    <p class="text-xs text-gray-500 mt-2">支援拍照或從相簿選擇</p>
+                    <p id="support-photo-text" class="text-xs text-gray-500 mt-2">支援拍照或從相簿選擇</p>
                 </div>
 
                 <!-- 上傳按鈕 (選擇照片後顯示) -->
@@ -114,6 +114,39 @@
             </div>
         </div>
     </footer>
+
+    <!-- 自定義檔案選擇對話框 -->
+    <div id="file-select-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg p-6 mx-4 max-w-sm w-full">
+            <div class="text-center mb-6">
+                <h3 id="modal-title" class="text-lg font-bold text-gray-800 mb-2">選擇照片</h3>
+                <p id="modal-description" class="text-sm text-gray-600">請選擇您要上傳的菜單照片</p>
+            </div>
+            
+            <div class="space-y-3">
+                <button id="gallery-btn" class="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <span id="gallery-text">照片圖庫</span>
+                    <span class="text-gray-400">📁</span>
+                </button>
+                
+                <button id="camera-btn" class="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <span id="camera-text">拍照</span>
+                    <span class="text-gray-400">📷</span>
+                </button>
+                
+                <button id="file-btn" class="w-full flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                    <span id="file-text">選擇檔案</span>
+                    <span class="text-gray-400">📄</span>
+                </button>
+            </div>
+            
+            <div class="mt-6 text-center">
+                <button id="cancel-modal-btn" class="text-gray-500 hover:text-gray-700 px-4 py-2">
+                    <span id="cancel-text">取消</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- 引入 LIFF SDK -->
     <script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
@@ -161,6 +194,13 @@
                 selectPhoto: '選擇菜單照片',
                 takePhoto: '拍照',
                 selectFromGallery: '從相簿選擇',
+                supportPhotoText: '支援拍照或從相簿選擇',
+                modalTitle: '選擇照片',
+                modalDescription: '請選擇您要上傳的菜單照片',
+                galleryText: '照片圖庫',
+                cameraText: '拍照',
+                fileText: '選擇檔案',
+                cancelText: '取消',
                 startRecognition: '開始辨識菜單',
                 uploadingStatus: '正在上傳並請 AI 辨識菜單...',
                 recognitionSuccess: '辨識完成！正在生成點餐介面...',
@@ -227,6 +267,13 @@
                 selectPhoto: 'Select Menu Photo',
                 takePhoto: 'Take Photo',
                 selectFromGallery: 'Select from Gallery',
+                supportPhotoText: 'Support taking photos or selecting from albums',
+                modalTitle: 'Select Photo',
+                modalDescription: 'Please select the menu photo you want to upload',
+                galleryText: 'Photo Gallery',
+                cameraText: 'Take Photo',
+                fileText: 'Choose File',
+                cancelText: 'Cancel',
                 startRecognition: 'Start Recognition',
                 uploadingStatus: 'Uploading and asking AI to recognize menu...',
                 recognitionSuccess: 'Recognition complete! Generating ordering interface...',
@@ -293,6 +340,13 @@
                 selectPhoto: 'メニュー写真を選択',
                 takePhoto: '写真を撮影',
                 selectFromGallery: 'ギャラリーから選択',
+                supportPhotoText: '写真撮影またはアルバムからの選択をサポート',
+                modalTitle: '写真を選択',
+                modalDescription: 'アップロードするメニュー写真を選択してください',
+                galleryText: '写真ギャラリー',
+                cameraText: '写真を撮影',
+                fileText: 'ファイルを選択',
+                cancelText: 'キャンセル',
                 startRecognition: '認識開始',
                 uploadingStatus: 'アップロード中、AIにメニュー認識を依頼中...',
                 recognitionSuccess: '認識完了！注文インターフェースを生成中...',
@@ -357,6 +411,15 @@
                 ocrTitle: '비파트너 매장',
                 ocrDescription: '메뉴 사진을 촬영하거나 업로드해 주세요. 실시간으로 번역하여 주문 양식을 만들어 드리겠습니다.',
                 selectPhoto: '메뉴 사진 선택',
+                takePhoto: '사진 촬영',
+                selectFromGallery: '갤러리에서 선택',
+                supportPhotoText: '사진 촬영 또는 앨범에서 선택 지원',
+                modalTitle: '사진 선택',
+                modalDescription: '업로드할 메뉴 사진을 선택해 주세요',
+                galleryText: '사진 갤러리',
+                cameraText: '사진 촬영',
+                fileText: '파일 선택',
+                cancelText: '취소',
                 startRecognition: '인식 시작',
                 uploadingStatus: '업로드 중, AI에게 메뉴 인식을 요청 중...',
                 recognitionSuccess: '인식 완료! 주문 인터페이스를 생성 중...',
@@ -441,12 +504,46 @@
             document.getElementById('ocr-title').textContent = texts.ocrTitle;
             document.getElementById('ocr-description').textContent = texts.ocrDescription;
             // 更新統一的上傳按鈕文字
-            document.querySelector('label[for="menu-upload"]').textContent = '📸 ' + texts.selectPhoto;
+            const customUploadBtn = document.getElementById('custom-upload-btn');
+            if (customUploadBtn) {
+                customUploadBtn.textContent = '📸 ' + texts.selectPhoto;
+            }
             document.getElementById('upload-btn').textContent = texts.startRecognition;
+            // 更新支援拍照文字
+            const supportPhotoElement = document.getElementById('support-photo-text');
+            if (supportPhotoElement) {
+                supportPhotoElement.textContent = texts.supportPhotoText;
+            }
+            
+            // 更新自定義對話框文字
+            const modalTitle = document.getElementById('modal-title');
+            const modalDescription = document.getElementById('modal-description');
+            const galleryText = document.getElementById('gallery-text');
+            const cameraText = document.getElementById('camera-text');
+            const fileText = document.getElementById('file-text');
+            const cancelText = document.getElementById('cancel-text');
+            
+            if (modalTitle) modalTitle.textContent = texts.modalTitle;
+            if (modalDescription) modalDescription.textContent = texts.modalDescription;
+            if (galleryText) galleryText.textContent = texts.galleryText;
+            if (cameraText) cameraText.textContent = texts.cameraText;
+            if (fileText) fileText.textContent = texts.fileText;
+            if (cancelText) cancelText.textContent = texts.cancelText;
             
             // 更新購物車
             document.getElementById('total-label').textContent = texts.totalLabel;
             document.getElementById('submit-order').textContent = texts.submitOrder;
+            
+            // 更新問候語（如果用戶已登入）
+            const liffStatus = document.getElementById('liff-status');
+            if (liffStatus && liffStatus.textContent.includes('你好') || liffStatus.textContent.includes('Hello') || liffStatus.textContent.includes('こんにちは') || liffStatus.textContent.includes('안녕하세요')) {
+                // 提取用戶名稱
+                const match = liffStatus.textContent.match(/(你好|Hello|こんにちは|안녕하세요)\s+(.+?)！/);
+                if (match && match[2]) {
+                    const userName = match[2];
+                    liffStatus.textContent = `${texts.helloUser} ${userName}！`;
+                }
+            }
         }
 
 
@@ -500,6 +597,8 @@
                 if (liff.isLoggedIn()) {
                     const profile = await liff.getProfile();
                     currentUserId = profile.userId; // 儲存 LINE 使用者 ID
+                    // 注意：這裡的 currentLanguage 可能還沒有正確設定，所以使用預設值
+                    const texts = translations['zh-TW'];
                     document.getElementById('liff-status').textContent = `${texts.helloUser} ${profile.displayName}！`;
                     console.log('用戶資料:', profile);
                 } else {
@@ -738,6 +837,54 @@
                 }
             }
 
+            // 自定義檔案選擇對話框邏輯
+            const customUploadBtn = document.getElementById('custom-upload-btn');
+            const fileSelectModal = document.getElementById('file-select-modal');
+            const galleryBtn = document.getElementById('gallery-btn');
+            const cameraBtn = document.getElementById('camera-btn');
+            const fileBtn = document.getElementById('file-btn');
+            const cancelModalBtn = document.getElementById('cancel-modal-btn');
+            
+            // 顯示自定義對話框
+            customUploadBtn.addEventListener('click', () => {
+                fileSelectModal.classList.remove('hidden');
+            });
+            
+            // 關閉對話框
+            cancelModalBtn.addEventListener('click', () => {
+                fileSelectModal.classList.add('hidden');
+            });
+            
+            // 點擊背景關閉對話框
+            fileSelectModal.addEventListener('click', (e) => {
+                if (e.target === fileSelectModal) {
+                    fileSelectModal.classList.add('hidden');
+                }
+            });
+            
+            // 從相簿選擇
+            galleryBtn.addEventListener('click', () => {
+                fileInput.accept = 'image/*';
+                fileInput.click();
+                fileSelectModal.classList.add('hidden');
+            });
+            
+            // 拍照
+            cameraBtn.addEventListener('click', () => {
+                fileInput.accept = 'image/*';
+                fileInput.capture = 'environment';
+                fileInput.click();
+                fileSelectModal.classList.add('hidden');
+            });
+            
+            // 選擇檔案
+            fileBtn.addEventListener('click', () => {
+                fileInput.accept = 'image/*';
+                fileInput.capture = null;
+                fileInput.click();
+                fileSelectModal.classList.add('hidden');
+            });
+            
             // 為檔案上傳 input 添加事件監聽器
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];

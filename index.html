@@ -744,7 +744,16 @@
                     // 非合作店家
                     document.getElementById('store-type-badge').innerHTML = 
                         `<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">${texts.nonPartnerStore}</span>`;
-                    showNonPartnerInterface(storeName);
+                    
+                    // 非合作店家也要檢查是否有菜單
+                    if (data.has_menu) {
+                        // 有菜單，載入菜單
+                        await loadPartnerStoreMenu(data.store_id || storeIdentifier, language);
+                    } else {
+                        // 沒有菜單，顯示非合作店家介面（相機選項）
+                        console.log('非合作店家且沒有菜單，顯示相機選項');
+                        showNonPartnerInterface(storeName);
+                    }
                 }
                 
             } catch (error) {

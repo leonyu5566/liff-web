@@ -628,9 +628,12 @@
             // 從 URL 參數取得所有必要資訊
             const urlParams = new URLSearchParams(window.location.search);
             const storeId = urlParams.get('store_id');
+            const placeId = urlParams.get('place_id');
             const preferredLang = urlParams.get('preferred_lang'); // 新增：從 LINE Bot 傳入的使用者偏好語言
-            const isPartner = urlParams.get('partner') === 'true';
             const storeName = urlParams.get('store_name') || 'Unknown Store';
+            
+            // 檢查是否有 store_id 或 place_id
+            const hasStoreIdentifier = storeId || placeId;
             
             // 語言偵測邏輯：優先使用URL參數，備用自動偵測
             let detectedLanguage = preferredLang || urlParams.get('lang');
@@ -665,29 +668,31 @@
             const normalizedLanguage = languageCodeMapping[language] || 'zh-TW';
             
             // 設定全局變數
-            currentStore = storeId || 'non-partner';
+            currentStore = storeId || placeId || 'non-partner';
             currentLanguage = normalizedLanguage;
             
             // 除錯：顯示語言偵測過程
             console.log('語言偵測過程:', {
                 store_id: storeId,
+                place_id: placeId,
                 preferred_lang: preferredLang,
                 detected_language: detectedLanguage,
                 original_language: language,
                 normalized_language: normalizedLanguage,
                 liff_initialized: liffInitialized,
                 browser_language: navigator.language,
-                isPartner: isPartner,
+                hasStoreIdentifier: hasStoreIdentifier,
                 storeName: storeName,
                 currentStore: currentStore
             });
             
-            // 直接顯示店家資訊（後端會處理翻譯）
-            document.getElementById('current-store-name').textContent = storeName;
-            const texts = translations[currentLanguage] || translations['zh-TW'];
-            document.getElementById('store-type-badge').innerHTML = isPartner 
-                ? `<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">${texts.partnerStore}</span>`
-                : `<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">${texts.nonPartnerStore}</span>`;
+            // 如果有店家識別碼，向後端查詢合作狀態
+            if (hasStoreIdentifier) {
+                await checkStorePartnerStatus(storeId || placeId, storeName, normalizedLanguage);
+            } else {
+                // 沒有店家識別碼，顯示非合作店家介面
+                showNonPartnerInterface();
+            }
             
             // 更新語言顯示
             updateLanguageDisplay();
@@ -695,14 +700,57 @@
             
             // 更新介面語言
             updateInterfaceLanguage();
-            
-            // 根據合作狀態決定顯示介面
-            if (isPartner) {
-                // 合作店家模式 - 直接載入菜單
-                await loadPartnerStoreMenu(storeId, normalizedLanguage);
-            } else {
-                // 非合作店家模式 - 顯示 OCR 上傳介面
-                showNonPartnerInterface();
+        }
+
+        async function checkStorePartnerStatus(storeIdentifier, storeName, language) {
+            try {
+                console.log('開始檢查店家合作狀態:', storeIdentifier);
+                
+                // 判斷是 store_id 還是 place_id
+                const isStoreId = !isNaN(storeIdentifier);
+                const queryParam = isStoreId ? 'store_id' : 'place_id';
+                
+                // 向後端發送請求檢查店家合作狀態
+                const response = await fetch(`${API_BASE_URL}/api/stores/check-partner-status?${queryParam}=${storeIdentifier}`);
+                
+                if (!response.ok) {
+                    console.log('店家合作狀態檢查失敗，顯示非合作店家介面');
+                    showNonPartnerInterface(storeName);
+                    return;
+                }
+                
+                const data = await response.json();
+                console.log('店家合作狀態檢查結果:', data);
+                
+                // 更新店家資訊顯示
+                document.getElementById('current-store-name').textContent = data.store_name || storeName;
+                
+                const texts = translations[currentLanguage] || translations['zh-TW'];
+                
+                if (data.is_partner) {
+                    // 合作店家
+                    document.getElementById('store-type-badge').innerHTML = 
+                        `<span class="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">${texts.partnerStore}</span>`;
+                    
+                    if (data.has_menu) {
+                        // 有菜單，載入菜單
+                        await loadPartnerStoreMenu(data.store_id, language);
+                    } else {
+                        // 沒有菜單，顯示非合作店家介面
+                        console.log('合作店家但沒有菜單，顯示相機選項');
+                        showNonPartnerInterface(storeName);
+                    }
+                } else {
+                    // 非合作店家
+                    document.getElementById('store-type-badge').innerHTML = 
+                        `<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">${texts.nonPartnerStore}</span>`;
+                    showNonPartnerInterface(storeName);
+                }
+                
+            } catch (error) {
+                console.error('檢查店家合作狀態時發生錯誤:', error);
+                // 發生錯誤時，顯示非合作店家介面
+                showNonPartnerInterface(storeName);
             }
         }
 
@@ -736,7 +784,7 @@
 
 
 
-        async function loadPartnerStoreMenu(storeId, language) {
+        async function loadPartnerStoreMenu(storeIdentifier, language) {
             try {
                 // 隱藏 OCR 介面
                 document.getElementById('ocr-section').classList.add('hidden');
@@ -760,8 +808,16 @@
                 };
                 const backendLanguage = backendLanguageMapping[language] || language;
                 
+                // 判斷是 store_id 還是 place_id，選擇正確的 API 端點
+                const isStoreId = !isNaN(storeIdentifier);
+                const apiEndpoint = isStoreId 
+                    ? `${API_BASE_URL}/api/menu/${storeIdentifier}?lang=${backendLanguage}`
+                    : `${API_BASE_URL}/api/menu/by-place-id/${storeIdentifier}?lang=${backendLanguage}`;
+                
+                console.log('使用 API 端點:', apiEndpoint);
+                
                 // 向後端請求菜單資料
-                const response = await fetch(`${API_BASE_URL}/api/menu/${storeId}?lang=${backendLanguage}`);
+                const response = await fetch(apiEndpoint);
                 if (!response.ok) {
                     const texts = translations[currentLanguage] || translations['zh-TW'];
                     throw new Error(texts.loadMenuError);
@@ -769,9 +825,9 @@
                 const data = await response.json();
                 
                 // 渲染菜單
-                if (data && data.items && data.items.length > 0) {
+                if (data && data.menu_items && data.menu_items.length > 0) {
                     try {
-                        renderMenu(data.items);
+                        renderMenu(data.menu_items);
                     } catch (renderError) {
                         console.error('前端渲染錯誤:', renderError);
                         const texts = translations[currentLanguage] || translations['zh-TW'];
@@ -811,9 +867,14 @@
             }
         }
 
-        function showNonPartnerInterface() {
+        function showNonPartnerInterface(storeName = '') {
             // 顯示非合作店家介面
             document.getElementById('ocr-section').classList.remove('hidden');
+            
+            // 如果有店家名稱，更新顯示
+            if (storeName) {
+                document.getElementById('current-store-name').textContent = storeName;
+            }
             
             // 初始化非合作店家模式
             setupNonPartnerMode();

@@ -789,9 +789,13 @@
                 document.getElementById('store-type-badge').textContent = texts.preparingOrder;
             }
             
-            // 更新 OCR 介面
-            document.getElementById('ocr-title').textContent = texts.ocrTitle;
-            document.getElementById('ocr-description').textContent = texts.ocrDescription;
+            // 更新 OCR 介面（根據模式決定是否覆蓋）
+            const ocrSection = document.getElementById('ocr-section');
+            if (ocrSection && ocrSection.dataset.mode !== 'partner-no-menu') {
+                // 只有在非合作店家無菜單模式時才覆蓋標題和描述
+                document.getElementById('ocr-title').textContent = texts.ocrTitle;
+                document.getElementById('ocr-description').textContent = texts.ocrDescription;
+            }
             // 更新統一的上傳按鈕文字
             const customUploadBtn = document.getElementById('custom-upload-btn');
             if (customUploadBtn) {
@@ -1153,7 +1157,11 @@
 
         function showNonPartnerInterface(storeName = '', isPartnerStore = false) {
             // 顯示非合作店家介面
-            document.getElementById('ocr-section').classList.remove('hidden');
+            const ocrSection = document.getElementById('ocr-section');
+            ocrSection.classList.remove('hidden');
+            
+            // 設定模式旗標，避免被 updateInterfaceLanguage 覆蓋
+            ocrSection.dataset.mode = isPartnerStore ? 'partner-no-menu' : 'non-partner';
             
             // 如果有店家名稱，更新顯示
             if (storeName) {

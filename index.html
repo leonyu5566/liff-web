@@ -189,6 +189,8 @@
                 preparingOrder: '正在準備點餐環境',
                 
                 // OCR 介面
+                partnerStoreNoMenu: '合作店家（無菜單）',
+                partnerStoreNoMenuDesc: '此合作店家目前沒有菜單，請拍攝或上傳菜單照片，我們將為您即時翻譯並建立點餐單。',
                 ocrTitle: '非合作店家',
                 ocrDescription: '請拍攝或上傳清楚的菜單照片，我們將為您即時翻譯並建立點餐單。',
                 selectPhoto: '選擇菜單照片',
@@ -262,6 +264,8 @@
                 preparingOrder: 'Preparing ordering environment',
                 
                 // OCR 介面
+                partnerStoreNoMenu: 'Partner Store (No Menu)',
+                partnerStoreNoMenuDesc: 'This partner store currently has no menu. Please take or upload a clear photo of the menu. We will translate it in real-time and create an order form.',
                 ocrTitle: 'Non-Partner Store',
                 ocrDescription: 'Please take or upload a clear photo of the menu. We will translate it in real-time and create an order form.',
                 selectPhoto: 'Select Menu Photo',
@@ -335,6 +339,8 @@
                 preparingOrder: '注文環境を準備中',
                 
                 // OCR 介面
+                partnerStoreNoMenu: 'パートナー店舗（メニューなし）',
+                partnerStoreNoMenuDesc: 'このパートナー店舗には現在メニューがありません。メニューの写真を撮影またはアップロードしてください。リアルタイムで翻訳し、注文フォームを作成いたします。',
                 ocrTitle: '非パートナー店舗',
                 ocrDescription: 'メニューの写真を撮影またはアップロードしてください。リアルタイムで翻訳し、注文フォームを作成いたします。',
                 selectPhoto: 'メニュー写真を選択',
@@ -408,6 +414,8 @@
                 preparingOrder: '주문 환경을 준비 중',
                 
                 // OCR 介面
+                partnerStoreNoMenu: '파트너 매장 (메뉴 없음)',
+                partnerStoreNoMenuDesc: '이 파트너 매장에는 현재 메뉴가 없습니다. 메뉴 사진을 촬영하거나 업로드해 주세요. 실시간으로 번역하여 주문 양식을 만들어 드리겠습니다.',
                 ocrTitle: '비파트너 매장',
                 ocrDescription: '메뉴 사진을 촬영하거나 업로드해 주세요. 실시간으로 번역하여 주문 양식을 만들어 드리겠습니다.',
                 selectPhoto: '메뉴 사진 선택',
@@ -922,7 +930,7 @@
                 await checkStorePartnerStatus(storeId || placeId, storeName, currentLanguage);
             } else {
                 // 沒有店家識別碼，顯示非合作店家介面
-                showNonPartnerInterface();
+                showNonPartnerInterface('', false); // 傳入 false 表示非合作店家
             }
             
             // 更新語言顯示
@@ -946,7 +954,7 @@
                 
                 if (!response.ok) {
                     console.log('店家合作狀態檢查失敗，顯示非合作店家介面');
-                    showNonPartnerInterface(storeName);
+                    showNonPartnerInterface(storeName, false); // 傳入 false 表示非合作店家
                     return;
                 }
                 
@@ -967,9 +975,9 @@
                         // 有菜單，載入菜單
                         await loadPartnerStoreMenu(data.store_id, currentLanguage);
                     } else {
-                        // 沒有菜單，顯示非合作店家介面
+                        // 沒有菜單，顯示相機選項介面
                         console.log('合作店家但沒有菜單，顯示相機選項');
-                        showNonPartnerInterface(storeName);
+                        showNonPartnerInterface(storeName, true); // 傳入 true 表示是合作店家
                     }
                 } else {
                     // 非合作店家
@@ -983,14 +991,14 @@
                     } else {
                         // 非合作店家介面（相機選項）
                         console.log('非合作店家且沒有菜單，顯示相機選項');
-                        showNonPartnerInterface(storeName);
+                        showNonPartnerInterface(storeName, false); // 傳入 false 表示非合作店家
                     }
                 }
                 
             } catch (error) {
                 console.error('檢查店家合作狀態時發生錯誤:', error);
                 // 發生錯誤時，顯示非合作店家介面
-                showNonPartnerInterface(storeName);
+                showNonPartnerInterface(storeName, false); // 傳入 false 表示非合作店家
             }
         }
 
@@ -1101,13 +1109,28 @@
             }
         }
 
-        function showNonPartnerInterface(storeName = '') {
+        function showNonPartnerInterface(storeName = '', isPartnerStore = false) {
             // 顯示非合作店家介面
             document.getElementById('ocr-section').classList.remove('hidden');
             
             // 如果有店家名稱，更新顯示
             if (storeName) {
                 document.getElementById('current-store-name').textContent = storeName;
+            }
+            
+            // 根據店家狀態更新標題和描述
+            const ocrTitle = document.getElementById('ocr-title');
+            const ocrDescription = document.getElementById('ocr-description');
+            const texts = translations[currentLanguage] || translations['zh-TW'];
+            
+            if (isPartnerStore) {
+                // 合作店家但沒有菜單
+                ocrTitle.textContent = texts.partnerStoreNoMenu || '合作店家（無菜單）';
+                ocrDescription.textContent = texts.partnerStoreNoMenuDesc || '此合作店家目前沒有菜單，請拍攝或上傳菜單照片，我們將為您即時翻譯並建立點餐單。';
+            } else {
+                // 非合作店家
+                ocrTitle.textContent = texts.ocrTitle;
+                ocrDescription.textContent = texts.ocrDescription;
             }
             
             // 初始化非合作店家模式

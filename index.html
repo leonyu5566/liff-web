@@ -1325,6 +1325,7 @@
                 formData.append('file', file);
                 formData.append('lang', backendLanguage);
                 formData.append('store_id', storeId);
+                formData.append('user_id', currentUserId); // 加入使用者 ID
                 
                 // debug: dump every key/val
                 console.log('FormData 內容:');

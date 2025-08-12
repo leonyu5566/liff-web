@@ -202,6 +202,7 @@
         let currentMenuItems = []; // 當前頁面顯示的菜單項目
         let currentLanguage = 'zh-TW'; // 當前語言
         let currentStore = null; // 當前選擇的店家
+        let currentStoreName = 'Unknown Store'; // 當前店家名稱
         let liffInitialized = false; // LIFF 初始化狀態
         let currentUserId = null; // 當前使用者 ID
 
@@ -959,6 +960,7 @@
             
             // 設定全局變數（語言已在啟動流程中設定）
             currentStore = storeId || placeId || 'non-partner';
+            currentStoreName = storeName; // 設定全域店家名稱
             
             // 除錯：顯示初始化過程
             console.log('參數初始化過程:', {
@@ -1008,7 +1010,9 @@
                 console.log('店家合作狀態檢查結果:', data);
                 
                 // 更新店家資訊顯示
-                document.getElementById('current-store-name').textContent = data.store_name || storeName;
+                const displayStoreName = data.store_name || storeName;
+                document.getElementById('current-store-name').textContent = displayStoreName;
+                currentStoreName = displayStoreName; // 更新全域店家名稱
                 
                 const texts = translations[currentLanguage] || translations['zh-TW'];
                 
@@ -1717,6 +1721,7 @@
                 const payload = {
                     line_user_id: currentUserId, // 加入使用者 ID
                     store_id: currentStore || 'non-partner',
+                    store_name: currentStoreName, // 加入店家名稱
                     items: orderItems,
                     total: totalAmount,  // 可選，後端會重新計算
                     language: currentLanguage

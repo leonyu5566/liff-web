@@ -1167,9 +1167,10 @@
             // 設定模式旗標，避免被 updateInterfaceLanguage 覆蓋
             ocrSection.dataset.mode = isPartnerStore ? 'partner-no-menu' : 'non-partner';
             
-            // 如果有店家名稱，更新顯示
+            // 如果有店家名稱，更新顯示和全域變數
             if (storeName) {
                 document.getElementById('current-store-name').textContent = storeName;
+                currentStoreName = storeName; // 更新全域店家名稱
             }
             
             // 根據店家狀態更新標題和描述

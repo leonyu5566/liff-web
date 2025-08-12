@@ -1322,10 +1322,10 @@
                 const backendLanguage = getBackendLanguage(currentLanguage);
                 
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append('file', file);  // upload-menu-image 端點期望的參數名稱是 'file'
                 formData.append('lang', backendLanguage);
                 formData.append('store_id', storeId);
-                formData.append('user_id', currentUserId); // 加入使用者 ID
+                // 不發送 user_id，讓後端自動創建臨時用戶
                 
                 // debug: dump every key/val
                 console.log('FormData 內容:');
@@ -1341,8 +1341,8 @@
                     storeId: storeId
                 });
                 
-                // 使用 process-ocr 端點來處理OCR菜單
-                const response = await fetch(`${API_BASE_URL}/api/menu/process-ocr`, {
+                // 使用 upload-menu-image 端點來處理OCR菜單
+                const response = await fetch(`${API_BASE_URL}/api/upload-menu-image`, {
                     method: 'POST',
                     body: formData
                 });

@@ -1051,7 +1051,13 @@
                 console.log('店家合作狀態檢查結果:', data);
                 
                 // 更新店家資訊顯示 - 優先使用翻譯後的店名
-                const displayStoreName = data.display_name || data.translated_name || data.store_name || storeName;
+                let displayStoreName = data.display_name || data.translated_name || data.store_name || storeName;
+                
+                // 如果後端沒有提供翻譯且目標語言不是中文，則前端翻譯
+                if (!data.display_name && !data.translated_name && !/^zh/i.test(currentLanguage)) {
+                    displayStoreName = await ensureTranslatedName(displayStoreName, currentLanguage);
+                }
+                
                 document.getElementById('current-store-name').textContent = displayStoreName;
                 currentStoreName = displayStoreName; // 更新全域店家名稱
                 
@@ -1162,8 +1168,8 @@
                     </div>
                 `;
                 
-                // 統一使用後端語言格式
-                const apiLanguage = getBackendLanguage(currentLanguage);
+                // 直接傳遞完整語言碼給後端（後端支援 BCP47 格式）
+                const apiLanguage = currentLanguage;
                 
                 // 判斷是 store_id 還是 place_id，選擇正確的 API 端點
                 const isStoreId = !isNaN(storeIdentifier);

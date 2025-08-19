@@ -997,8 +997,9 @@
                 const isStoreId = !isNaN(storeIdentifier);
                 const queryParam = isStoreId ? 'store_id' : 'place_id';
                 
-                // 向後端發送請求檢查店家合作狀態
-                const response = await fetch(`${API_BASE_URL}/api/stores/check-partner-status?${queryParam}=${storeIdentifier}`);
+                // 向後端發送請求檢查店家合作狀態，並傳遞語言參數
+                const backendLang = getBackendLanguage(currentLanguage);
+                const response = await fetch(`${API_BASE_URL}/api/stores/check-partner-status?${queryParam}=${storeIdentifier}&lang=${backendLang}`);
                 
                 if (!response.ok) {
                     console.log('店家合作狀態檢查失敗，顯示非合作店家介面');
@@ -1009,8 +1010,8 @@
                 const data = await response.json();
                 console.log('店家合作狀態檢查結果:', data);
                 
-                // 更新店家資訊顯示
-                const displayStoreName = data.store_name || storeName;
+                // 更新店家資訊顯示 - 優先使用翻譯後的店名
+                const displayStoreName = data.translated_name || data.store_name || storeName;
                 document.getElementById('current-store-name').textContent = displayStoreName;
                 currentStoreName = displayStoreName; // 更新全域店家名稱
                 

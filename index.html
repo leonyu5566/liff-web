@@ -877,6 +877,9 @@
                 // 設定當前語言為目標語言
                 currentLanguage = targetLang;
                 
+                // 更新 HTML lang 屬性
+                document.documentElement.lang = currentLanguage || 'en';
+                
                 // 更新語言顯示
                 updateLanguageDisplay(currentLanguage);
                 
@@ -1001,8 +1004,8 @@
             }
             
             // 更新語言顯示
-            updateLanguageDisplay();
-            updateLanguageInfo();
+            updateLanguageDisplay(currentLanguage);
+            updateLanguageBadge();
             
             // 更新介面語言
             updateInterfaceLanguage();
@@ -1038,7 +1041,9 @@
                     const texts = translations[currentLanguage] || translations['zh-TW'];
                     document.getElementById('store-type-badge').innerHTML = 
                         `<span class="bg-orange-100 text-orange-800 px-2 py-1 rounded-full text-xs">${texts.nonPartnerStore}</span>`;
-                    showNonPartnerInterface(storeName, false); // 傳入 false 表示非合作店家
+                    // 翻譯店名後再顯示
+                    const displayName = await ensureTranslatedName(storeName, currentLanguage);
+                    showNonPartnerInterface(displayName, false); // 傳入 false 表示非合作店家
                     return;
                 }
                 
@@ -1063,7 +1068,8 @@
                     } else {
                         // 沒有菜單，顯示相機選項介面
                         console.log('合作店家但沒有菜單，顯示相機選項');
-                        showNonPartnerInterface(storeName, true); // 傳入 true 表示是合作店家
+                        const displayName = await ensureTranslatedName(storeName, currentLanguage);
+                        showNonPartnerInterface(displayName, true); // 傳入 true 表示是合作店家
                     }
                 } else {
                     // 非合作店家
@@ -1077,18 +1083,20 @@
                     } else {
                         // 非合作店家介面（相機選項）
                         console.log('非合作店家且沒有菜單，顯示相機選項');
-                        showNonPartnerInterface(storeName, false); // 傳入 false 表示非合作店家
+                        const displayName = await ensureTranslatedName(storeName, currentLanguage);
+                        showNonPartnerInterface(displayName, false); // 傳入 false 表示非合作店家
                     }
                 }
                 
             } catch (error) {
                 console.error('檢查店家合作狀態時發生錯誤:', error);
                 // 發生錯誤時，立即顯示非合作店家介面（不要卡在準備中）
-                showNonPartnerInterface(storeName, false); // 傳入 false 表示非合作店家
+                const displayName = await ensureTranslatedName(storeName, currentLanguage);
+                showNonPartnerInterface(displayName, false); // 傳入 false 表示非合作店家
             }
         }
 
-        function updateLanguageDisplay() {
+        function updateLanguageBadge() {
             const langNames = {
                 'zh-TW': '中文',
                 'en-US': 'English',
@@ -1116,6 +1124,27 @@
                 `Store ID: ${currentStore || 'Not Selected'} / Language: ${languageName}`;
         }
 
+        async function ensureTranslatedName(name, targetLang) {
+            if (!name) return name;
+            if (/^zh/i.test(targetLang)) return name;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/translate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        source: 'zh',
+                        target: targetLang,
+                        contents: [name]
+                    })
+                });
+                if (!res.ok) return name;
+                const data = await res.json();
+                return data.translated?.[0] || name;
+            } catch(_) { 
+                return name; 
+            }
+        }
+
 
 
         async function loadPartnerStoreMenu(storeIdentifier, language) {
@@ -1133,8 +1162,8 @@
                     </div>
                 `;
                 
-                // 直接傳遞完整語言碼給後端（支援任意 BCP47 語言）
-                const apiLanguage = currentLanguage; // 不再轉換，直接傳遞
+                // 統一使用後端語言格式
+                const apiLanguage = getBackendLanguage(currentLanguage);
                 
                 // 判斷是 store_id 還是 place_id，選擇正確的 API 端點
                 const isStoreId = !isNaN(storeIdentifier);

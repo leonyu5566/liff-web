@@ -585,9 +585,9 @@
                     headers: { 
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        // 僅在有值時再加，避免 "undefined" 被送進去害預檢失敗
-                        ...(currentLanguage && {'X-LIFF-User-Lang': currentLanguage}),
-                        ...(currentUserId && {'X-LIFF-User-Id': currentUserId}),
+                        // 簡化 headers，避免 CORS 問題
+                        'X-LIFF-User-Lang': currentLanguage || 'zh-TW',
+                        'X-LIFF-User-Id': currentUserId || 'guest'
                     },
                     mode: 'cors',
                     body: JSON.stringify({
@@ -1041,9 +1041,9 @@
                         'Accept': 'application/json',
                         'Content-Type': 'application/json',
                         'Cache-Control': 'no-cache',
-                        // 僅在有值時再加，避免 "undefined" 被送進去害預檢失敗
-                        ...(currentLanguage && {'X-LIFF-User-Lang': currentLanguage}),
-                        ...(currentUserId && {'X-LIFF-User-Id': currentUserId}),
+                        // 簡化 headers，避免 CORS 問題
+                        'X-LIFF-User-Lang': currentLanguage || 'zh-TW',
+                        'X-LIFF-User-Id': currentUserId || 'guest'
                     },
                     mode: 'cors',
                     cache: 'no-store',
@@ -1154,9 +1154,9 @@
                     headers: { 
                         'Content-Type': 'application/json',
                         'Accept': 'application/json',
-                        // 僅在有值時再加，避免 "undefined" 被送進去害預檢失敗
-                        ...(currentLanguage && {'X-LIFF-User-Lang': currentLanguage}),
-                        ...(currentUserId && {'X-LIFF-User-Id': currentUserId}),
+                        // 簡化 headers，避免 CORS 問題
+                        'X-LIFF-User-Lang': currentLanguage || 'zh-TW',
+                        'X-LIFF-User-Id': currentUserId || 'guest'
                     },
                     mode: 'cors',
                     body: JSON.stringify({ 

@@ -266,6 +266,7 @@
                 closeWindow: '關閉視窗',
                 orderSuccess: '訂單已成功送出！',
                 orderFailed: '訂單送出失敗：',
+                submittingOrder: '送出中...',
                 
                 // 錯誤訊息
                 loadMenuError: '無法載入菜單資料',
@@ -342,6 +343,7 @@
                 closeWindow: 'Close Window',
                 orderSuccess: 'Order submitted successfully!',
                 orderFailed: 'Order submission failed: ',
+                submittingOrder: 'Submitting...',
                 
                 // 錯誤訊息
                 loadMenuError: 'Unable to load menu data',
@@ -418,6 +420,7 @@
                 closeWindow: 'ウィンドウを閉じる',
                 orderSuccess: '注文が正常に送信されました！',
                 orderFailed: '注文送信に失敗しました：',
+                submittingOrder: '送信中...',
                 
                 // 錯誤訊息
                 loadMenuError: 'メニューデータを読み込めません',
@@ -494,6 +497,7 @@
                 closeWindow: '창 닫기',
                 orderSuccess: '주문이 성공적으로 제출되었습니다!',
                 orderFailed: '주문 제출에 실패했습니다: ',
+                submittingOrder: '제출 중...',
                 
                 // 錯誤訊息
                 loadMenuError: '메뉴 데이터를 불러올 수 없습니다',
@@ -1773,6 +1777,20 @@
                 return;
             }
             
+            // 獲取送出訂單按鈕並設置載入狀態
+            const submitButton = document.getElementById('submit-order');
+            const originalText = submitButton.textContent;
+            const texts = translations[currentLanguage] || translations['zh-TW'];
+            
+            // 設置載入狀態
+            submitButton.disabled = true;
+            submitButton.innerHTML = `
+                <div class="flex items-center justify-center space-x-2">
+                    <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>${texts.submittingOrder || '送出中...'}</span>
+                </div>
+            `;
+            
             try {
                 // 1. 驗證購物車資料
                 const cartItems = Object.entries(cart)
@@ -1963,6 +1981,10 @@
                 console.error('送出訂單失敗:', error);
                 const texts = translations[currentLanguage] || translations['zh-TW'];
                 alert(`${texts.orderFailed}${error.message}`);
+            } finally {
+                // 恢復按鈕狀態
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
             }
         });
     </script>

@@ -1748,34 +1748,7 @@
             document.getElementById('submit-order').disabled = total === 0;
         }
 
-        function showOrderConfirmation(result, orderDetails) {
-            const mainContent = document.getElementById('main-content');
-            const cartFooter = document.getElementById('cart-footer');
-            const texts = translations[currentLanguage] || translations['zh-TW'];
-            
-            // 隱藏購物車
-            cartFooter.classList.add('hidden');
-            
-            // 顯示確認頁面
-            mainContent.innerHTML = `
-                <div class="text-center py-20">
-                    <div class="text-6xl mb-4">✅</div>
-                    <h1 class="text-2xl font-bold text-gray-800 mb-4">${texts.orderConfirmed}</h1>
-                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
-                        <p class="text-lg font-semibold text-gray-700 mb-4">📋 ${texts.orderNumber}: ${result.order_id}</p>
-                        <p class="text-lg font-semibold text-blue-600 mb-4">💰 ${texts.totalAmount}: NT$ ${document.getElementById('total-price').textContent}</p>
-                        <div class="text-left bg-gray-50 p-4 rounded-md mb-4">
-                            <p class="font-semibold text-gray-700 mb-2">📝 ${texts.orderDetails}:</p>
-                            <p class="text-sm text-gray-600 whitespace-pre-line">${orderDetails}</p>
-                        </div>
-                        <p class="text-gray-600">${texts.thankYou}</p>
-                    </div>
-                    <button onclick="closeLiffWindow()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
-                        ${texts.closeWindow}
-                    </button>
-                </div>
-            `;
-        }
+
 
         function closeLiffWindow() {
             if (liffInitialized && liff.isLoggedIn()) {
@@ -1785,6 +1758,286 @@
                 const texts = translations[currentLanguage] || translations['zh-TW'];
                 alert(texts.orderSuccess);
             }
+        }
+
+        // 輪詢架構相關函式
+        const POLLING_INTERVAL = 2000; // 2秒輪詢一次
+        const MAX_POLLING_ATTEMPTS = 30; // 最多輪詢30次（60秒）
+
+        /**
+         * 開始輪詢訂單狀態
+         */
+        function startPollingOrderStatus(orderId, orderItems) {
+            console.log(`🔄 開始輪詢訂單狀態: order_id=${orderId}`);
+            
+            // 顯示等待頁面
+            showWaitingPage(orderId, orderItems);
+            
+            let pollingAttempts = 0;
+            
+            const pollInterval = setInterval(async () => {
+                pollingAttempts++;
+                
+                try {
+                    console.log(`📡 輪詢嘗試 ${pollingAttempts}/${MAX_POLLING_ATTEMPTS}`);
+                    
+                    const status = await checkOrderStatus(orderId);
+                    
+                    if (status.processing === false) {
+                        // 處理完成或失敗
+                        clearInterval(pollInterval);
+                        
+                        if (status.status === 'completed') {
+                            showSuccessPage(status, orderItems);
+                        } else if (status.status === 'failed') {
+                            showErrorPage(status);
+                        } else {
+                            showUnknownStatusPage(status);
+                        }
+                        
+                    } else {
+                        // 更新等待頁面的進度
+                        updateWaitingProgress(pollingAttempts, MAX_POLLING_ATTEMPTS);
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ 輪詢失敗:', error);
+                    
+                    if (pollingAttempts >= MAX_POLLING_ATTEMPTS) {
+                        clearInterval(pollInterval);
+                        showError('輪詢超時，請稍後查看訂單狀態');
+                    }
+                }
+            }, POLLING_INTERVAL);
+        }
+
+        /**
+         * 查詢訂單狀態
+         */
+        async function checkOrderStatus(orderId) {
+            const response = await fetch(`${API_BASE_URL}/api/orders/status/${orderId}`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            return await response.json();
+        }
+
+        /**
+         * 顯示等待頁面
+         */
+        function showWaitingPage(orderId, orderItems) {
+            const mainContent = document.getElementById('main-content');
+            const cartFooter = document.getElementById('cart-footer');
+            const texts = translations[currentLanguage] || translations['zh-TW'];
+            
+            // 隱藏購物車
+            cartFooter.classList.add('hidden');
+            
+            mainContent.innerHTML = `
+                <div class="text-center py-20">
+                    <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-6"></div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">${texts.processingOrder || '訂單處理中'}</h2>
+                    <p class="text-gray-600 mb-2">訂單編號: ${orderId}</p>
+                    <div class="w-full bg-gray-200 rounded-full h-4 mb-4 max-w-md mx-auto">
+                        <div class="bg-blue-600 h-4 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                    <p class="text-sm text-gray-500">正在生成語音檔案和處理訂單，請稍候...</p>
+                </div>
+            `;
+        }
+
+        /**
+         * 更新等待進度
+         */
+        function updateWaitingProgress(current, total) {
+            const progressBar = document.querySelector('.bg-blue-600');
+            const percentage = Math.round((current / total) * 100);
+            
+            if (progressBar) {
+                progressBar.style.width = `${percentage}%`;
+            }
+        }
+
+        /**
+         * 顯示成功頁面
+         */
+        function showSuccessPage(status, orderItems) {
+            const mainContent = document.getElementById('main-content');
+            const texts = translations[currentLanguage] || translations['zh-TW'];
+            
+            // 準備訂單詳情
+            const orderDetails = orderItems
+                .map(item => {
+                    const menuItem = currentMenuItems.find(i => 
+                        (i.id == item.menu_item_id) || 
+                        (i.menu_item_id == item.menu_item_id) || 
+                        (i.temp_id == item.menu_item_id)
+                    );
+                    if (menuItem) {
+                        let itemName;
+                        if (menuItem.name && typeof menuItem.name === 'object' && menuItem.name.original && menuItem.name.translated) {
+                            if (currentLanguage.startsWith('zh')) {
+                                itemName = menuItem.name.original;
+                            } else {
+                                itemName = menuItem.name.translated;
+                            }
+                        } else {
+                            itemName = menuItem.translated_name || menuItem.original_name || menuItem.item_name || 'Untitled';
+                        }
+                        return `${itemName} x ${item.quantity || item.qty}`;
+                    }
+                    return `Item ${item.menu_item_id} x ${item.quantity || item.qty}`;
+                }).join('\n');
+            
+            let voiceSection = '';
+            if (status.voice_ready && status.voice_url) {
+                voiceSection = `
+                    <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3">🎵 語音檔案</h3>
+                        <audio controls class="w-full mb-3">
+                            <source src="${status.voice_url}" type="audio/mpeg">
+                            您的瀏覽器不支援音訊播放。
+                        </audio>
+                        <button onclick="downloadVoice('${status.voice_url}')" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors">
+                            📥 下載語音檔
+                        </button>
+                    </div>
+                `;
+            }
+            
+            let summarySection = '';
+            if (status.summary_ready && status.summary) {
+                summarySection = `
+                    <div class="bg-white p-4 rounded-lg shadow-md mb-4">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3">📋 訂單摘要</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <h4 class="font-semibold text-gray-600 mb-2">中文摘要</h4>
+                                <p class="bg-gray-50 p-3 rounded text-sm">${status.summary.chinese}</p>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-600 mb-2">翻譯摘要</h4>
+                                <p class="bg-gray-50 p-3 rounded text-sm">${status.summary.translated}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            mainContent.innerHTML = `
+                <div class="text-center py-20">
+                    <div class="text-6xl mb-4">✅</div>
+                    <h1 class="text-2xl font-bold text-gray-800 mb-4">${texts.orderConfirmed || '訂單處理完成！'}</h1>
+                    
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                        <p class="text-lg font-semibold text-gray-700 mb-4">📋 ${texts.orderNumber || '訂單編號'}: ${status.order_id}</p>
+                        <p class="text-lg font-semibold text-blue-600 mb-4">💰 ${texts.totalAmount || '總金額'}: NT$ ${status.total_amount}</p>
+                        <div class="text-left bg-gray-50 p-4 rounded-md mb-4">
+                            <p class="font-semibold text-gray-700 mb-2">📝 ${texts.orderDetails || '訂單詳情'}:</p>
+                            <p class="text-sm text-gray-600 whitespace-pre-line">${orderDetails}</p>
+                        </div>
+                    </div>
+                    
+                    ${voiceSection}
+                    ${summarySection}
+                    
+                    <button onclick="closeLiffWindow()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                        ${texts.closeWindow || '關閉視窗'}
+                    </button>
+                </div>
+            `;
+        }
+
+        /**
+         * 顯示錯誤頁面
+         */
+        function showErrorPage(status) {
+            const mainContent = document.getElementById('main-content');
+            const texts = translations[currentLanguage] || translations['zh-TW'];
+            
+            mainContent.innerHTML = `
+                <div class="text-center py-20">
+                    <div class="text-6xl mb-4">❌</div>
+                    <h1 class="text-2xl font-bold text-red-600 mb-4">${texts.orderFailed || '訂單處理失敗'}</h1>
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                        <p class="text-gray-600 mb-4">很抱歉，訂單處理過程中發生錯誤。</p>
+                        <p class="text-sm text-gray-500">訂單編號: ${status.order_id}</p>
+                    </div>
+                    <div class="space-x-4">
+                        <button onclick="retryOrder(${status.order_id})" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                            🔄 重試
+                        </button>
+                        <button onclick="location.reload()" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition-colors">
+                            🏠 重新開始
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * 顯示未知狀態頁面
+         */
+        function showUnknownStatusPage(status) {
+            const mainContent = document.getElementById('main-content');
+            const texts = translations[currentLanguage] || translations['zh-TW'];
+            
+            mainContent.innerHTML = `
+                <div class="text-center py-20">
+                    <div class="text-6xl mb-4">❓</div>
+                    <h1 class="text-2xl font-bold text-yellow-600 mb-4">${texts.unknownStatus || '訂單狀態未知'}</h1>
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                        <p class="text-gray-600 mb-4">訂單狀態: ${status.status}</p>
+                        <p class="text-sm text-gray-500">請聯繫客服確認訂單狀態。</p>
+                    </div>
+                    <button onclick="location.reload()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                        🏠 重新開始
+                    </button>
+                </div>
+            `;
+        }
+
+        /**
+         * 顯示錯誤訊息
+         */
+        function showError(message) {
+            const mainContent = document.getElementById('main-content');
+            const texts = translations[currentLanguage] || translations['zh-TW'];
+            
+            mainContent.innerHTML = `
+                <div class="text-center py-20">
+                    <div class="text-6xl mb-4">⚠️</div>
+                    <h1 class="text-2xl font-bold text-red-600 mb-4">${texts.error || '錯誤'}</h1>
+                    <div class="bg-white p-6 rounded-lg shadow-md mb-6">
+                        <p class="text-gray-600">${message}</p>
+                    </div>
+                    <button onclick="location.reload()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                        🔄 重試
+                    </button>
+                </div>
+            `;
+        }
+
+        /**
+         * 下載語音檔案
+         */
+        function downloadVoice(voiceUrl) {
+            const link = document.createElement('a');
+            link.href = voiceUrl;
+            link.download = `order_voice_${Date.now()}.mp3`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        /**
+         * 重試訂單
+         */
+        function retryOrder(orderId) {
+            // 重新開始輪詢
+            startPollingOrderStatus(orderId, []);
         }
 
         document.getElementById('submit-order').addEventListener('click', async () => {
@@ -1906,15 +2159,10 @@
                 console.log('發送訂單 payload:', payload);
                 console.log("About to fetch API at:", new Date()); // 計時終點
 
-                // 4. 發送請求 - 檢查是否為OCR菜單訂單
-                const isOcrOrder = orderItems.some(item => 
-                    item.menu_item_id && item.menu_item_id.toString().startsWith('ocr_')
-                );
+                // 4. 使用新的快速訂單建立端點（輪詢架構）
+                console.log('🚀 使用快速訂單建立端點...');
                 
-                const endpoint = isOcrOrder ? '/api/orders/ocr' : '/api/orders';
-                console.log(`使用端點: ${endpoint}, 是否為OCR訂單: ${isOcrOrder}`);
-                
-                const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+                const response = await fetch(`${API_BASE_URL}/api/orders/quick`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1954,37 +2202,10 @@
                 }
 
                 const result = await response.json();
+                console.log('✅ 快速訂單建立成功:', result);
                 
-                const orderDetails = orderItems
-                    .map(item => {
-                        // 使用多種可能的 ID 欄位來匹配項目
-                        const menuItem = currentMenuItems.find(i => 
-                            (i.id == item.menu_item_id) || 
-                            (i.menu_item_id == item.menu_item_id) || 
-                            (i.temp_id == item.menu_item_id)
-                        );
-                        if (menuItem) {
-                            // 支援新的雙語格式
-                            let itemName;
-                            if (menuItem.name && typeof menuItem.name === 'object' && menuItem.name.original && menuItem.name.translated) {
-                                // 新格式：根據使用者語言選擇菜名
-                                if (currentLanguage.startsWith('zh')) {
-                                    itemName = menuItem.name.original; // 中文使用者使用中文菜名
-                                } else {
-                                    itemName = menuItem.name.translated; // 其他語言使用者使用翻譯菜名
-                                }
-                            } else {
-                                // 舊格式：優先使用 translated_name，然後是 original_name
-                                itemName = menuItem.translated_name || menuItem.original_name || menuItem.item_name || 'Untitled';
-                            }
-                            return `${itemName} x ${item.quantity || item.qty}`;
-                        }
-                        const texts = translations[currentLanguage] || translations['zh-TW'];
-                        return `Item ${item.menu_item_id} x ${item.quantity || item.qty}`;
-                    }).join('\n');
-
-                // 顯示訂單確認頁面
-                showOrderConfirmation(result, orderDetails);
+                // 開始輪詢訂單狀態
+                startPollingOrderStatus(result.order_id, orderItems);
                 
                 // 清空購物車
                 cart = {};
